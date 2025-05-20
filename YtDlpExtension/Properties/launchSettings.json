@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "YtDlpExtension (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true,
+      "AlwaysReinstallApp": true,
+      "AllowLocalNetworkLoopback": true,
+      "DeployOptionalPackages": true
+    },
+    "YtDlpExtension (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
