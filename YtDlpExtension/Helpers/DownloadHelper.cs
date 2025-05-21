@@ -162,8 +162,8 @@ namespace YtDlpExtension.Helpers
             onStart?.Invoke();
             SetTitle($"Extracting URL: {url}");
             _downloadBanner.UpdateState(DownloadState.Extracting);
-            var arguments = $"-P \"{downloadPath}\" --yes-playlist -f \"{videoFormat}\" --merge-output-format {GetSettingsVideoOutputFormat()}";
-            if (audioOnly) arguments = $"-P \"{downloadPath}\" --yes-playlist -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()}";
+            var arguments = $"-P \"{downloadPath}\" --no-mtime --yes-playlist -f \"{videoFormat}\" --merge-output-format {GetSettingsVideoOutputFormat()}";
+            if (audioOnly) arguments = $"-P \"{downloadPath}\" --no-mtime --yes-playlist -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()}";
 
             var psi = new ProcessStartInfo
             {
@@ -218,8 +218,8 @@ namespace YtDlpExtension.Helpers
 
             var arguments = audioOnly switch
             {
-                false => $"--abort-on-unavailable-fragment --no-playlist -P \"{downloadPath}\" -f \"{videoFormatId}+{audioFormatId}\" --merge-output-format {GetSettingsVideoOutputFormat()} {url}",
-                true => $"--abort-on-unavailable-fragment --no-playlist -P \"{downloadPath}\" -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()} \"{url}\""
+                false => $"--abort-on-unavailable-fragment --no-mtime --no-playlist -P \"{downloadPath}\" -f \"{videoFormatId}+{audioFormatId}\" --merge-output-format {GetSettingsVideoOutputFormat()} {url}",
+                true => $"--abort-on-unavailable-fragment --no-mtime --no-playlist -P \"{downloadPath}\" -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()} \"{url}\""
             };
 
             var psi = new ProcessStartInfo
