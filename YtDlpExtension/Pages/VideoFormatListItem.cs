@@ -10,7 +10,7 @@ namespace YtDlpExtension.Pages
     {
 
         private readonly DownloadHelper _ytDlp;
-        private readonly CancellationTokenSource token = new();
+        private CancellationTokenSource token = new();
 
         public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, JObject videoFormatObject, DownloadHelper ytDlp)
         {
@@ -49,6 +49,9 @@ namespace YtDlpExtension.Pages
                     token?.Cancel();
                     Subtitle = "";
                     Command = startDownloadCommand;
+                    // The token needs to be renewed after the cancel or
+                    // the format will not be available to download again
+                    token = new();
                 })
                 {
                     Name = "CancelDownload".ToLocalized(),
@@ -59,14 +62,29 @@ namespace YtDlpExtension.Pages
 
             var onDownloadFinished = () =>
             {
-                Icon = new IconInfo("\uE8FB");
+                Icon = new IconInfo("\uE930");
                 Subtitle = "Downloaded".ToLocalized();
                 Command = startDownloadCommand;
             };
 
+            var onAlreadyDownloaded = () =>
+            {
+                Icon = new IconInfo("\uE930");
+                Subtitle = "AlreadyDownloaded".ToLocalized();
+                Command = null;
+            };
+
             startDownloadCommand = new AnonymousCommand(async () =>
             {
-                _ = await _ytDlp.TryExecuteDownloadAsync(queryURL, videoTitle, formatId, onStart: onDownloadStart, onFinish: onDownloadFinished, cancellationToken: token.Token);
+                _ = await _ytDlp.TryExecuteDownloadAsync(
+                        queryURL,
+                        videoTitle,
+                        formatId,
+                        onStart: onDownloadStart,
+                        onFinish: onDownloadFinished,
+                        onAlreadyDownloaded: onAlreadyDownloaded,
+                        cancellationToken: token.Token
+                    );
             })
             {
                 Name = "Download",
@@ -75,6 +93,7 @@ namespace YtDlpExtension.Pages
             };
 
             Command = startDownloadCommand;
+
 
         }
 

@@ -39,6 +39,7 @@ namespace YtDlpExtension.Helpers
             Action<string>? onOutputData = null,
             Action? onStart = null,
             Action? onFinish = null,
+            Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -56,6 +57,7 @@ namespace YtDlpExtension.Helpers
                         var videoTitle = fullLogMessage.Split("[download]")[1].Trim();
                         SetTitle("⚠️ The video has already been downloaded");
                         _downloadBanner.UpdateState(DownloadState.AlreadyDownloaded, videoTitle);
+                        onAlreadyDownloaded?.Invoke();
                     }
 
                     onOutputData?.Invoke(args.Data);
@@ -153,6 +155,7 @@ namespace YtDlpExtension.Helpers
             bool audioOnly = false,
             Action? onStart = null,
             Action? onFinish = null,
+            Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -192,6 +195,7 @@ namespace YtDlpExtension.Helpers
                 },
                 onStart,
                 onFinish,
+                onAlreadyDownloaded,
                 cancellationToken
             );
         }
@@ -204,6 +208,7 @@ namespace YtDlpExtension.Helpers
             bool audioOnly = false,
             Action? onStart = null,
             Action? onFinish = null,
+            Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -243,6 +248,7 @@ namespace YtDlpExtension.Helpers
                 },
                 onStart,
                 onFinish,
+                onAlreadyDownloaded,
                 cancellationToken
             );
         }
