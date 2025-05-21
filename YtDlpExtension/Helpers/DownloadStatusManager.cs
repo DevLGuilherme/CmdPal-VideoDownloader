@@ -1,10 +1,6 @@
 ﻿using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Versioning;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace YtDlpExtension.Helpers
@@ -24,7 +20,7 @@ namespace YtDlpExtension.Helpers
         private StatusMessage _banner = new();
         public DownloadState CurrentState { get; private set; }
 
-        public void UpdateState(DownloadState state, string message = "",bool isIndeterminate = false, uint progressPercent = 0)
+        public void UpdateState(DownloadState state, string message = "", bool isIndeterminate = false, uint progressPercent = 0)
         {
             CurrentState = state;
             (_banner.Message, _banner.State, _banner.Progress) = state switch
@@ -34,7 +30,7 @@ namespace YtDlpExtension.Helpers
                 DownloadState.AlreadyDownloaded => ("AlreadyDownloaded".ToLocalized(message), MessageState.Warning, null),
                 DownloadState.Finished => ("Downloaded".ToLocalized(message), MessageState.Success, null),
                 DownloadState.Cancelled => ("Cancelled".ToLocalized(), MessageState.Error, null),
-                _ => (message, MessageState.Info, new ProgressState { IsIndeterminate = isIndeterminate})
+                _ => (message, MessageState.Info, new ProgressState { IsIndeterminate = isIndeterminate })
             };
             if (state is not DownloadState.Downloading and not DownloadState.Extracting)
             {

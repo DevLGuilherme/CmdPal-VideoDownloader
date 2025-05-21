@@ -2,10 +2,8 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using ABI.System;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
-using Microsoft.UI.Xaml.Controls;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -13,9 +11,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
-using Windows.ApplicationModel.Resources;
-using Windows.System;
 using YtDlpExtension.Helpers;
 using YtDlpExtension.Pages;
 
@@ -24,11 +21,9 @@ namespace YtDlpExtension;
 internal sealed partial class YtDlpExtensionPage : DynamicListPage
 {
     private readonly List<ListItem> _itens = new();
-    private ListItem? _selectedIten;
     private DownloadHelper _ytDlp;
     private readonly Dictionary<string, ListItem> _activeDownloads = new();
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\Logo.png");
-    private readonly IconInfo _testeIcon = IconHelpers.FromRelativePath("Assets\\teste.gif");
     private readonly SettingsManager _settingsManager;
 
     public YtDlpExtensionPage(SettingsManager settingsManager, DownloadHelper ytDlp)
@@ -43,7 +38,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         EmptyContent = new CommandItem(new NoOpCommand())
         {
             Icon = _ytDlpIcon,
-            Title = "EmptyContentTiltle".ToLocalized(), 
+            Title = "EmptyContentTiltle".ToLocalized(),
             MoreCommands = [new CommandContextItem(
                     "Open folder",
                     "Open selected download folder",
@@ -57,7 +52,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                     },
                     CommandResult.KeepOpen()
                 ){
-                
+
             }]
         };
         _ytDlp.TitleUpdated += title => Title = title;
@@ -71,10 +66,8 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         if (oldSearch == newSearch) return;
 
         var isPlaylist = newSearch.Contains("playlist") || newSearch.Contains("list=");
-        CommandResult.GoToPage(new GoToPageArgs() { PageId = "USAGE"});
-
         await UpdateListAsync(newSearch);
-        
+
     }
 
     private async Task UpdateListAsync(string queryText)
@@ -91,7 +84,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         IsLoading = true;
         var isPlaylist = queryText.Contains("playlist") || queryText.Contains("list=");
         string jsonResult = await _ytDlp.TryExecuteQueryAsync(queryURL, isPlaylist);
-        
+
         if (string.IsNullOrEmpty(jsonResult))
         {
             HandleError("EmptyDataYtDlp".ToLocalized());
@@ -109,15 +102,16 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             //Get all available formats
             var formats = videoInfo["formats"] as JArray;
             //Order formats by resolution, from highest to lowest
-            JToken[] formatsOrdered = [];           
+            JToken[] formatsOrdered = [];
             if (audioOnlyQuery)
             {
                 formatsOrdered = formats?.Where(
-                f => 
-                    f?["vcodec"]?.ToString() == "none" && 
+                f =>
+                    f?["vcodec"]?.ToString() == "none" &&
                     f?["resolution"]?.ToString() == "audio only"
                 ).ToArray() ?? [];
-            } else
+            }
+            else
             {
                 formatsOrdered = formats?
                     .OrderByDescending(format => format["height"]?.ToObject<int?>() ?? 0)
@@ -139,6 +133,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 _ytDlp._downloadBanner.UpdateState(DownloadState.CustomMessage, "FetchingPlaylistTitle".ToLocalized(), true);
                 _ytDlp._downloadBanner.ShowStatus();
                 IsLoading = true;
+                //The form page will be set after the data from the playlist is fetched
                 var listItem = new ListItem(new NoOpCommand())
                 {
                     Tags = [new Tag("Playlist")],
@@ -146,23 +141,54 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                     Title = "FetchingPlaylistTitle".ToLocalized(),
                     Subtitle = "FetchingPlaylistDescription".ToLocalized()
                 };
-                _itens.Insert(0,listItem);
+                _itens.Insert(0, listItem);
                 RaiseItemsChanged(1);
-                _ = _ytDlp.ExtractPlaylistDataAsync(queryURL, onFinish: (Action<JObject>?)((playlistDetails) =>
+                _ = _ytDlp.ExtractPlaylistDataAsync(queryURL, onFinish: (playlistDetails) =>
                 {
                     var playlistTitle = playlistDetails["playlistTitle"]?.ToString();
                     var playlistCount = playlistDetails["playlistCount"]?.ToString();
                     playlistData.Add("playlistTitle", playlistTitle);
                     playlistData.Add("playlistCount", "playlistCount".ToLocalized(playlistCount ?? "0"));
-                    listItem.Command = new PlaylistFormPage(_settingsManager, playlistData, _ytDlp);
+                    // The command to go to the playlist form is declared here
+                    // in order to update the command once the download starts
+                    Command goToPlaylistDownloadForm = new NoOpCommand();
+
+                    // This callback will be invoked once the download starts
+                    // And will update the command to cancel the playlist download
+                    Action<CancellationTokenSource> onSubmitForm = (cancellationToken) =>
+                    {
+                        listItem.Command = new AnonymousCommand(() =>
+                        {
+                            // Once the download is cancelled
+                            // The previous command should take place of the cancel command 
+                            // The form needs to be available again
+                            cancellationToken.Cancel();
+                            listItem.Command = goToPlaylistDownloadForm;
+                            listItem.Title = "PlaylistFetchedTitle".ToLocalized();
+                            listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
+                            listItem.Icon = new IconInfo("\uE90B");
+                        })
+                        {
+                            Name = "CancelDownload".ToLocalized(),
+                            Icon = new IconInfo("\uE711"),
+                            Result = CommandResult.KeepOpen()
+                        };
+                    };
+
+                    // The actual form is constructed here passing the callback declared previously
+                    /// This is currently needed because <see cref="CommandResult.GoToPage"/>  is not implemented yet
+                    // Needs future refactoring
+                    goToPlaylistDownloadForm = new PlaylistFormPage(_settingsManager, playlistData, _ytDlp, onSubmit: onSubmitForm);
+
+                    listItem.Command = goToPlaylistDownloadForm;
                     listItem.Title = "PlaylistFetchedTitle".ToLocalized();
                     listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
                     listItem.Icon = new IconInfo("\uE90B");
                     Title = "PlaylistFetchedTitle".ToLocalized();
                     RaiseItemsChanged(1);
                     _ytDlp._downloadBanner.Hide();
-                }));
-                
+                });
+
 
             }
 
@@ -172,7 +198,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
                 if (formatObject != null)
                 {
-                    _itens.Add(CreateListItem(queryURL, videoTitle, thumbnail, formatObject));
+                    _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, formatObject, _ytDlp));
                     RaiseItemsChanged();
                 }
             }
@@ -190,120 +216,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             };
         }
         IsLoading = false;
-        
-    }
 
-    private async Task HandlePlaylistAsync(string queryText)
-    {
-        _itens.Clear();
-    }
- 
-    private ListItem CreateListItem(string queryURL, string videoTitle, string thumbnail, JObject formatObject)
-    {
-        var formatId = formatObject["format_id"]?.ToString() ?? "";
-        var resolution = formatObject["resolution"]?.ToString() ?? "";
-        var vcodec = formatObject["vcodec"]?.ToString() ?? "";
-        var acodec = formatObject["acodec"]?.ToString() ?? "";
-        var ext = formatObject["ext"]?.ToString() ?? "";
-        var filesizeBytes = formatObject["filesize"]?.ToObject<long?>()
-              ?? formatObject["filesize_approx"]?.ToObject<long?>();
-        double sizeInMB = 0d;
-        if (filesizeBytes != null) sizeInMB = filesizeBytes.Value / (1024.0 * 1024.0);
-
-        List<Tag> _tags = [
-            new Tag(formatId),
-            new Tag(ext)
-        ];
-
-        List<IContextItem> _commands = [];
-        List<IContextItem> _startDownloadCommand = [
-                    new CommandContextItem(
-                        title: "Download Audio",
-                        name: "Download Audio",
-                        subtitle: "Extracts audio",
-                        result: CommandResult.KeepOpen(),
-                        action: () => { /* Action code */ }
-                    )
-                    {
-                        Icon = new IconInfo("\uEC4F"),
-                        RequestedShortcut = KeyChordHelpers.FromModifiers(false, false, false, false, (int)VirtualKey.A, 0)
-                    }
-                ];
-        var listItem = new ListItem(new NoOpCommand())
-        {
-            Title = resolution,
-            Icon = new IconInfo("\uE896"),
-            Tags = _tags.ToArray(),
-            Details = new Details
-            {
-                Body =
-                        $"""
-                    ##**{videoTitle}**
-
-                    ![Thumbnail]({thumbnail})
-                  
-                    ---
-                    ### **{"Resolution".ToLocalized()}** 
-                    ### [{resolution}](#resolution)
-                    ### **{"Size".ToLocalized()}** 
-                    ### [~{sizeInMB:F2}](#sizeInMB)
-                    ### **{"Extension".ToLocalized()}** 
-                    ### [{ext}](#ext)
-                    ### **{"FormatId".ToLocalized()}**
-                    ### [{formatId}](#formatId)
-                    ### **{"ACodec".ToLocalized()}** 
-                    ### [{acodec}](#acodec)
-                    ### **{"VCodec".ToLocalized()}** 
-                    ### [{vcodec}](#vcodec)
-                    """,
-            },
-            MoreCommands = _startDownloadCommand.ToArray()
-        };
-
-        var command = new AnonymousCommand(async () =>
-        {
-            _selectedIten = listItem;
-
-            var onDownloadStart = () =>
-            {
-                listItem.Subtitle = "Downloading...";
-                listItem.MoreCommands = [
-                    new CommandContextItem(
-                        title: "Cancel Download",
-                        name: "Cancel Download",
-                        subtitle: "Cancel Download",
-                        result: CommandResult.ShowToast(new ToastArgs() { Message = "Download Canceled", Result = CommandResult.KeepOpen() }),
-                        action: () => {
-                            _ytDlp.CancelDownload();
-                            listItem.Subtitle = "";
-                            listItem.MoreCommands = _startDownloadCommand.ToArray();
-                        }
-                    )
-                    {
-                        Icon = new IconInfo("\uE711"),
-                        RequestedShortcut = KeyChordHelpers.FromModifiers(false, false, false, false, (int)VirtualKey.C, 0)
-                    }
-                ];
-                RaiseItemsChanged(_itens.Count);
-            };
-            var onDownloadFinished = () =>
-            {
-                listItem.Icon = new IconInfo("\uE8FB");
-                listItem.Subtitle = "Downloaded".ToLocalized();
-                listItem.MoreCommands = _startDownloadCommand.ToArray();
-            };
-            _ = await _ytDlp.TryExecuteDownloadAsync(queryURL, formatId, onStart: onDownloadStart, onFinish: onDownloadFinished);
-            
-            
-        })
-        {
-            Name = "Download",
-            Icon = new IconInfo("\uE896"),
-            Result = CommandResult.KeepOpen()
-        };
-
-        listItem.Command = command;
-        return listItem;
     }
 
     private void HandleError(string message)

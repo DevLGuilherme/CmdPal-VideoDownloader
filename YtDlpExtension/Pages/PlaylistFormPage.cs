@@ -2,13 +2,8 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Nodes;
 using System.Threading;
-using System.Threading.Tasks;
 using YtDlpExtension.Helpers;
 
 namespace YtDlpExtension.Pages
@@ -18,21 +13,15 @@ namespace YtDlpExtension.Pages
         private readonly SettingsManager _settings;
         private readonly JObject _jsonData;
         private readonly DownloadHelper _ytDlp;
-        private string _url;
-
-        public PlaylistFormPage(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp) { 
+        private readonly string _url;
+        private readonly Action<CancellationTokenSource> _onSubmit;
+        public PlaylistFormPage(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit)
+        {
             _settings = settings;
             _jsonData = jsonData;
             _ytDlp = ytDlp;
             _url = jsonData["videoURL"]?.ToString() ?? "";
-        }
-
-        public async Task ExtractPlaylistDataAsync(string videoUrl)
-        {
-            IsLoading = true;
-            var playlistData = await _ytDlp.ExtractPlaylistDataAsync(videoUrl);
-            _jsonData.Add(playlistData);
-            IsLoading = false;
+            _onSubmit = onSubmit;
         }
 
         public override IContent[] GetContent()
@@ -40,7 +29,7 @@ namespace YtDlpExtension.Pages
             return [
                 new TreeContent
                 {
-                    RootContent = new PlaylistFormContent(_settings, _jsonData, _ytDlp),
+                    RootContent = new PlaylistFormContent(_settings, _jsonData, _ytDlp, _onSubmit),
                     Children = []
                 }
             ];
@@ -53,7 +42,8 @@ namespace YtDlpExtension.Pages
         private readonly SettingsManager _settings;
         private string _playlistTitle;
         private JObject _jsonData = new();
-        private DownloadHelper _ytDlp;
+        private readonly DownloadHelper _ytDlp;
+        private readonly Action<CancellationTokenSource> _onSubmit;
         private JObject _templateJson = JObject.Parse($$"""
                 {
                     "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
@@ -187,10 +177,11 @@ namespace YtDlpExtension.Pages
                     ]
                 }
                 """);
-        public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp)
+        public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit)
         {
             _settings = settings;
             _ytDlp = ytDlp;
+            _onSubmit = onSubmit;
             var videoURL = jsonData["videoURL"]?.ToString();
             var title = jsonData["title"]?.ToString();
             var thumbnail = jsonData["thumbnail"]?.ToString();
@@ -218,11 +209,10 @@ namespace YtDlpExtension.Pages
             bool audioOnly = formInput["audioOnly"]?.ToString().Contains("true") ?? false;
             var videoURL = _jsonData["videoURL"]?.ToString() ?? "";
             var downloadPath = downloadPathFromPayload;
-            if(downloadPath == "") downloadPath = Path.Combine(_ytDlp.GetSettingsDownloadPath(), _playlistTitle);
-            _ = _ytDlp.TryExecutePlaylistDownloadAsync(videoURL, downloadPath, resolution, audioOnly: audioOnly, onStart: () =>
-            {
-
-            });
+            if (downloadPath == "") downloadPath = Path.Combine(_ytDlp.GetSettingsDownloadPath(), _playlistTitle);
+            var token = new CancellationTokenSource();
+            _ = _ytDlp.TryExecutePlaylistDownloadAsync(videoURL, downloadPath, resolution, audioOnly: audioOnly, cancellationToken: token.Token);
+            _onSubmit.Invoke(token);
             return CommandResult.GoBack();
         }
     }
