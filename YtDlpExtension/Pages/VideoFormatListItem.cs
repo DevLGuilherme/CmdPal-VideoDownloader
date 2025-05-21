@@ -1,6 +1,7 @@
 ﻿using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using YtDlpExtension.Helpers;
@@ -11,25 +12,61 @@ namespace YtDlpExtension.Pages
 
         private readonly DownloadHelper _ytDlp;
         private CancellationTokenSource token = new();
-
-        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, JObject videoFormatObject, DownloadHelper ytDlp)
+        private readonly SettingsManager _settings;
+        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, JObject videoFormatObject, DownloadHelper ytDlp, SettingsManager settings)
         {
             _ytDlp = ytDlp;
+            _settings = settings;
             var formatId = videoFormatObject["format_id"]?.ToString() ?? "";
             var resolution = videoFormatObject["resolution"]?.ToString() ?? "";
             var ext = videoFormatObject["ext"]?.ToString() ?? "";
-
             List<Tag> _tags = [new Tag(formatId), new Tag(ext)];
 
             List<IContextItem> _commands = [];
-            var downloadAudioOnlyCommand = new CommandContextItem(
-                        title: "DownloadAudio".ToLocalized(),
-                        name: "DownloadAudio".ToLocalized(),
-                        subtitle: "DownloadAudio".ToLocalized(),
-                        result: CommandResult.ShowToast(new ToastArgs() { Message = "DownloadAudio".ToLocalized(), Result = CommandResult.KeepOpen() }),
-                        action: () => { }
-                    );
-            _commands.Add(downloadAudioOnlyCommand);
+            var audioOnlyContextItem = new CommandContextItem(
+                        title: "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat),
+                        name: "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat),
+                        subtitle: "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat),
+                        result: CommandResult.ShowToast(new ToastArgs() { Message = "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat), Result = CommandResult.KeepOpen() }));
+
+            Action<CancellationToken> downloadAudioOnlyCommand = (cancellationToken) => { };
+            var audioOnlyCancellationToken = new CancellationTokenSource();
+
+            var onStartAudioOnly = () =>
+            {
+                audioOnlyContextItem.Command = new AnonymousCommand(() =>
+                {
+                    audioOnlyCancellationToken.Cancel();
+                    audioOnlyContextItem.Command = new AnonymousCommand(() => downloadAudioOnlyCommand(audioOnlyCancellationToken.Token))
+                    {
+                        Name = "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat),
+                        Result = CommandResult.KeepOpen()
+                    };
+                    audioOnlyCancellationToken = new();
+                })
+                {
+                    Name = "CancelDownload".ToLocalized(),
+                    Result = CommandResult.KeepOpen()
+                }; ;
+            };
+
+            downloadAudioOnlyCommand = (cancellationToken) =>
+            {
+                _ = _ytDlp.TryExecuteDownloadAsync(
+                    queryURL,
+                    videoTitle,
+                    string.Empty,
+                    audioOnly: true,
+                    onStart: onStartAudioOnly,
+                    cancellationToken: cancellationToken
+                );
+            };
+            audioOnlyContextItem.Command = new AnonymousCommand(() => downloadAudioOnlyCommand(audioOnlyCancellationToken.Token))
+            {
+                Name = "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat),
+                Result = CommandResult.KeepOpen()
+            };
+            _commands.Add(audioOnlyContextItem);
             //The command will be set at the end 
             //in order to update the command once the download starts
             Title = resolution;

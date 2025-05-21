@@ -130,7 +130,7 @@
     <value>Download cancelado</value>
   </data>
   <data name="DownloadAudio" xml:space="preserve">
-    <value>Baixar Audio</value>
+    <value>Baixar Audio ({0})</value>
   </data>
   <data name="Downloaded" xml:space="preserve">
     <value>Download completo</value>
