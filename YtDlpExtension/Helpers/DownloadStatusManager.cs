@@ -1,6 +1,7 @@
 ﻿using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,18 +17,32 @@ namespace YtDlpExtension.Helpers
         CustomMessage
     }
 
-    internal class DownloadStatusManager
+    internal static class DownloadStatusManager
     {
-        private StatusMessage _banner = new();
-        // This field is responsible to manage state updates
-        // if a rapid state change occurs this should be able to handle if hide or not the banner
-        private int _updateVersion = 0;
-        public DownloadState CurrentState { get; private set; }
+        private static readonly ConditionalWeakTable<StatusMessage, DownloadStatusState> _states = new();
 
-        public void UpdateState(DownloadState state, string message = "", bool isIndeterminate = false, uint progressPercent = 0)
+        private class DownloadStatusState
         {
-            CurrentState = state;
-            (_banner.Message, _banner.State, _banner.Progress) = state switch
+            public DownloadState CurrentState { get; set; } = DownloadState.CustomMessage;
+            public int UpdateVersion { get; set; }
+        }
+
+        private static DownloadStatusState GetState(this StatusMessage banner)
+        {
+            return _states.GetOrCreateValue(banner);
+        }
+
+        public static DownloadState CurrentState(this StatusMessage banner)
+        {
+            return banner.GetState().CurrentState;
+        }
+
+        public static void UpdateState(this StatusMessage banner, DownloadState state, string message = "", bool isIndeterminate = false, uint progressPercent = 0)
+        {
+            var stateObj = banner.GetState();
+            stateObj.CurrentState = state;
+
+            (banner.Message, banner.State, banner.Progress) = state switch
             {
                 DownloadState.Extracting => ("Extracting".ToLocalized(), MessageState.Info, new ProgressState { IsIndeterminate = true }),
                 DownloadState.Downloading => (message, MessageState.Info, new ProgressState { IsIndeterminate = false, ProgressPercent = progressPercent }),
@@ -37,11 +52,10 @@ namespace YtDlpExtension.Helpers
                 _ => (message, MessageState.Info, new ProgressState { IsIndeterminate = isIndeterminate })
             };
 
-            var versionAtUpdate = ++_updateVersion;
+            var versionAtUpdate = ++stateObj.UpdateVersion;
 
             if (state is not DownloadState.Downloading and not DownloadState.Extracting)
             {
-
                 var cts = new CancellationTokenSource();
                 var token = cts.Token;
 
@@ -49,12 +63,10 @@ namespace YtDlpExtension.Helpers
                 {
                     try
                     {
-                        await Task.Delay(5000).ConfigureAwait(false);
-
-                        // Only hides if the stated doesn't change within 5 sec
-                        if (versionAtUpdate == _updateVersion)
+                        await Task.Delay(5000, token).ConfigureAwait(false);
+                        if (versionAtUpdate == stateObj.UpdateVersion)
                         {
-                            Hide();
+                            banner.Hide();
                         }
                     }
                     catch (TaskCanceledException) { /* Ignored */ }
@@ -62,28 +74,32 @@ namespace YtDlpExtension.Helpers
             }
         }
 
-        public void ShowStatus()
+        public static void ShowStatus(this StatusMessage banner)
         {
-            YtDlpExtensionHost.Instance?.ShowStatus(_banner, StatusContext.Extension);
+            YtDlpExtensionHost.Instance?.ShowStatus(banner, StatusContext.Extension);
         }
 
-        public void ClearStatus()
+        public static void ClearStatus(this StatusMessage banner)
         {
-            _banner = new();
-
+            banner.Message = "";
+            banner.State = new MessageState();
+            banner.Progress = null;
         }
 
-        public void UpdateProgress(double percent)
+        public static void UpdateProgress(this StatusMessage banner, double percent)
         {
-            _banner.Progress = new ProgressState
+            banner.Progress = new ProgressState
             {
                 IsIndeterminate = false,
                 ProgressPercent = (uint)Math.Floor(percent)
             };
 
-            YtDlpExtensionHost.Instance?.ShowStatus(_banner, StatusContext.Extension);
+            banner.ShowStatus();
         }
 
-        public void Hide() => YtDlpExtensionHost.Instance?.HideStatus(_banner);
+        public static void Hide(this StatusMessage banner)
+        {
+            YtDlpExtensionHost.Instance?.HideStatus(banner);
+        }
     }
 }

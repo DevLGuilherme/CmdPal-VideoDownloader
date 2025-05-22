@@ -64,52 +64,53 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     public override async void UpdateSearchText(string oldSearch, string newSearch)
     {
+        if (oldSearch == newSearch)
+            return;
 
-        if (oldSearch == newSearch) return;
+        var oldAudioOnly = oldSearch is { Length: > 0 } oldQuery && oldQuery.StartsWith('@');
+        var newAudioOnly = newSearch is { Length: > 0 } newQuery && newQuery.StartsWith('@');
 
-        var oldAudioOnly = oldSearch.StartsWith('@');
-        var newAudioOnly = newSearch.StartsWith('@');
+        var oldTrimmed = oldSearch.TrimStart('@');
+        var newTrimmed = newSearch.TrimStart('@');
 
         if (_fallbackItems == null || _fallbackItems.Count == 0)
         {
-            // First Searh or empty list do a full search
+            // First Search or empty list — do a full search
             await UpdateListAsync(newSearch);
             return;
         }
 
-        if (oldAudioOnly != newAudioOnly && (newSearch == oldSearch.TrimStart('@') || newSearch == ""))
+        if (oldAudioOnly != newAudioOnly && (newTrimmed == oldTrimmed || newTrimmed == ""))
         {
             // If an @ is typed or removed at the start of the string but the url remains the same
-            if (newAudioOnly)
-            {
-                // Apply local filter for "audio only"
-                _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
-            }
-            else
-            {
-                // Removes the filter and restores the list
-                _itens = _fallbackItems.ToList();
-            }
-            RaiseItemsChanged(_itens.Count);
+            ApplyLocalFilter(newAudioOnly);
             return;
         }
 
-        if (newSearch.StartsWith('@'))
+        if (newAudioOnly && newTrimmed == oldTrimmed)
         {
-            var trimmedSearch = newSearch.TrimStart('@');
-
             // If the base text remains the same, apply local filter
-            if (trimmedSearch == oldSearch.TrimStart('@'))
-            {
-                _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
-                RaiseItemsChanged(_itens.Count);
-                return;
-            }
+            ApplyLocalFilter(true);
+            return;
         }
-        // If the url is completely different the do a new search
-        await UpdateListAsync(newSearch);
 
+        // If the url is completely different then do a new search
+        await UpdateListAsync(newSearch);
     }
+
+    private void ApplyLocalFilter(bool audioOnly)
+    {
+        if (audioOnly)
+        {
+            _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
+        }
+        else
+        {
+            _itens = _fallbackItems.ToList();
+        }
+        RaiseItemsChanged(_itens.Count);
+    }
+
 
     private async Task UpdateListAsync(string queryText)
     {
@@ -124,7 +125,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
         IsLoading = true;
         var isPlaylist = queryText.Contains("playlist") || queryText.Contains("list=");
-        string jsonResult = await _ytDlp.TryExecuteQueryAsync(queryURL, isPlaylist);
+        string jsonResult = await _ytDlp.TryExecuteQueryAsync(queryURL);
 
         if (string.IsNullOrEmpty(jsonResult))
         {
@@ -161,12 +162,11 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 {
                     ["title"] = videoTitle,
                     ["thumbnail"] = thumbnail,
-                    ["downloadPath"] = Path.Combine(_settingsManager.DownloadLocation, videoTitle),
                     ["videoURL"] = queryURL
                 };
                 Title = "FetchingPlaylistTitle".ToLocalized();
-                _ytDlp._downloadBanner.UpdateState(DownloadState.CustomMessage, "FetchingPlaylistTitle".ToLocalized(), true);
-                _ytDlp._downloadBanner.ShowStatus();
+                //_ytDlp._downloadBanner.UpdateState(DownloadState.CustomMessage, "FetchingPlaylistTitle".ToLocalized(), true);
+                //_ytDlp._downloadBanner.ShowStatus();
                 IsLoading = true;
                 //The form page will be set after the data from the playlist is fetched
                 var listItem = new ListItem(new NoOpCommand())
@@ -180,9 +180,10 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 RaiseItemsChanged(1);
                 _ = _ytDlp.ExtractPlaylistDataAsync(queryURL, onFinish: (playlistDetails) =>
                 {
-                    var playlistTitle = playlistDetails["playlistTitle"]?.ToString();
-                    var playlistCount = playlistDetails["playlistCount"]?.ToString();
+                    var playlistTitle = playlistDetails["playlistTitle"]?.ToString() ?? string.Empty;
+                    var playlistCount = playlistDetails["playlistCount"]?.ToString() ?? string.Empty;
                     playlistData.Add("playlistTitle", playlistTitle);
+                    playlistData.Add("downloadPath", Path.Combine(_settingsManager.DownloadLocation, playlistTitle));
                     playlistData.Add("playlistCount", "playlistCount".ToLocalized(playlistCount ?? "0"));
                     // The command to go to the playlist form is declared here
                     // in order to update the command once the download starts
@@ -221,7 +222,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                     listItem.Icon = new IconInfo("\uE90B");
                     Title = "PlaylistFetchedTitle".ToLocalized();
                     RaiseItemsChanged(1);
-                    _ytDlp._downloadBanner.Hide();
+                    //_ytDlp._downloadBanner.Hide();
                 });
 
 

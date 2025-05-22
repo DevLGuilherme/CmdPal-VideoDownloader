@@ -1,8 +1,10 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Microsoft.CommandPalette.Extensions.Toolkit;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +16,7 @@ namespace YtDlpExtension.Helpers
         public event Action<string>? TitleUpdated;
         public event Action<bool>? LoadingChanged;
         public event Action<int>? ItemsChanged;
-        public readonly DownloadStatusManager _downloadBanner = new();
+        //        public readonly DownloadStatusManager _downloadBanner = new();
         private readonly SettingsManager _settings;
         private void SetTitle(string title) => TitleUpdated?.Invoke(title);
         private void SetLoading(bool isLoading) => LoadingChanged?.Invoke(isLoading);
@@ -36,6 +38,7 @@ namespace YtDlpExtension.Helpers
 
         private async Task<string> ExecuteDownloadProcessAsync(
             ProcessStartInfo psi,
+            StatusMessage downloadBanner,
             Action<string>? onOutputData = null,
             Action? onStart = null,
             Action? onFinish = null,
@@ -46,6 +49,9 @@ namespace YtDlpExtension.Helpers
 
             using var downloadProcess = new Process { StartInfo = psi };
 
+            bool isCancelled = false;
+            bool alreadyDownloaded = false;
+
             downloadProcess.OutputDataReceived += (sender, args) =>
             {
                 if (!string.IsNullOrEmpty(args.Data))
@@ -53,10 +59,11 @@ namespace YtDlpExtension.Helpers
                     SetTitle(args.Data);
                     if (args.Data.Contains("has already been downloaded"))
                     {
+                        alreadyDownloaded = true;
                         var fullLogMessage = args.Data.Split("has")[0];
                         var videoTitle = fullLogMessage.Split("[download]")[1].Trim();
                         SetTitle("⚠️ The video has already been downloaded");
-                        _downloadBanner.UpdateState(DownloadState.AlreadyDownloaded, videoTitle);
+                        downloadBanner.UpdateState(DownloadState.AlreadyDownloaded, videoTitle);
                         onAlreadyDownloaded?.Invoke();
                     }
 
@@ -64,16 +71,16 @@ namespace YtDlpExtension.Helpers
                 }
             };
 
-            bool isCancelled = false;
+
 
             try
             {
                 onStart?.Invoke();
-                _downloadBanner.UpdateState(DownloadState.Extracting);
+                downloadBanner.UpdateState(DownloadState.Extracting);
 
                 downloadProcess.Start();
                 SetLoading(true);
-                _downloadBanner.ShowStatus();
+                downloadBanner.ShowStatus();
                 downloadProcess.BeginOutputReadLine();
 
                 using (cancellationToken.Register(() =>
@@ -92,50 +99,69 @@ namespace YtDlpExtension.Helpers
                     await downloadProcess.WaitForExitAsync(cancellationToken);
                 }
 
-                if (!isCancelled && downloadProcess.ExitCode == 0 && _downloadBanner.CurrentState != DownloadState.AlreadyDownloaded)
+                if (!isCancelled && downloadProcess.ExitCode == 0 && !alreadyDownloaded)
                 {
                     SetTitle("✅ Download finished");
-                    _downloadBanner.UpdateState(DownloadState.Finished);
+                    downloadBanner.UpdateState(DownloadState.Finished);
                     SetLoading(false);
                     onFinish?.Invoke();
                 }
                 else if (isCancelled)
                 {
                     SetTitle("⛔ Download cancelled");
-                    _downloadBanner.UpdateState(DownloadState.Cancelled);
+                    downloadBanner.UpdateState(DownloadState.Cancelled);
                     SetLoading(false);
                 }
             }
             catch (OperationCanceledException)
             {
                 SetTitle("⛔ Download cancelled");
-                _downloadBanner.UpdateState(DownloadState.Cancelled);
+                downloadBanner.UpdateState(DownloadState.Cancelled);
                 SetLoading(false);
             }
             SetLoading(false);
             return downloadProcess.HasExited ? downloadProcess.ExitCode.ToString(CultureInfo.InvariantCulture) : "-1";
         }
 
-        public async Task<string> TryExecuteQueryAsync(string url, bool isPlaylist = false)
+        public async Task<string> TryExecuteQueryAsync(string url)
         {
             SetLoading(true);
-            SetTitle($"Extracting URL: {url}");
-            _downloadBanner.UpdateState(DownloadState.Extracting);
-            var arguments = "--dump-json";
-            if (isPlaylist) arguments = $"--no-playlist --dump-json";
+            var arguments = "--dump-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose";
+
             var psi = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
                 Arguments = $"{arguments} {url}",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true
             };
 
             using var process = new Process { StartInfo = psi };
+
+            var outputBuilder = new StringBuilder();
+
+            process.OutputDataReceived += (sender, args) =>
+            {
+                if (string.IsNullOrWhiteSpace(args.Data))
+                    return;
+
+                var line = args.Data.Trim();
+
+                if (line.StartsWith('{') || line.StartsWith('['))
+                {
+                    outputBuilder.AppendLine(line);
+                }
+            };
+
             process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
+            process.BeginOutputReadLine();
+
+
             await process.WaitForExitAsync();
+
+            var output = outputBuilder.ToString();
 
             SetTitle(!string.IsNullOrEmpty(output)
                 ? $"✅ Available Formats for: {url}"
@@ -149,6 +175,7 @@ namespace YtDlpExtension.Helpers
 
         public async Task<string> TryExecutePlaylistDownloadAsync(
             string url,
+            StatusMessage downloadBanner,
             string downloadPath,
             string videoFormat,
             string audioFormatId = "bestaudio",
@@ -161,9 +188,10 @@ namespace YtDlpExtension.Helpers
         {
             onStart?.Invoke();
             SetTitle($"Extracting URL: {url}");
-            _downloadBanner.UpdateState(DownloadState.Extracting);
-            var arguments = $"-P \"{downloadPath}\" --no-mtime --yes-playlist -f \"{videoFormat}\" --merge-output-format {GetSettingsVideoOutputFormat()}";
-            if (audioOnly) arguments = $"-P \"{downloadPath}\" --no-mtime --yes-playlist -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()}";
+            downloadBanner.UpdateState(DownloadState.Extracting);
+            Directory.CreateDirectory(downloadPath);
+            var arguments = $"-P \"{downloadPath}\" --yes-playlist -f \"{videoFormat}\" --merge-output-format {GetSettingsVideoOutputFormat()}";
+            if (audioOnly) arguments = $"-P \"{downloadPath}\" --yes-playlist -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()}";
 
             var psi = new ProcessStartInfo
             {
@@ -171,7 +199,7 @@ namespace YtDlpExtension.Helpers
                 Arguments = $"{arguments} {url}",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             using var downloadProcess = new Process { StartInfo = psi };
@@ -179,6 +207,7 @@ namespace YtDlpExtension.Helpers
             var totalDownloads = string.Empty;
             return await ExecuteDownloadProcessAsync(
                 psi,
+                downloadBanner,
                 onOutputData: (data) =>
                 {
                     if (data.Contains("Downloading item"))
@@ -190,7 +219,7 @@ namespace YtDlpExtension.Helpers
                     if (Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%") is var match && match.Success)
                     {
                         var downloadProgress = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                        _downloadBanner.UpdateState(DownloadState.Downloading, "DownloadingPlaylist".ToLocalized(currentDownload, totalDownloads), progressPercent: (uint)Math.Floor(downloadProgress));
+                        downloadBanner.UpdateState(DownloadState.Downloading, "DownloadingPlaylist".ToLocalized(currentDownload, totalDownloads), progressPercent: (uint)Math.Floor(downloadProgress));
                     }
                 },
                 onStart,
@@ -202,6 +231,7 @@ namespace YtDlpExtension.Helpers
 
         public async Task<string> TryExecuteDownloadAsync(
             string url,
+            StatusMessage downloadBanner,
             string videoTitle,
             string videoFormatId,
             string audioFormatId = "bestaudio",
@@ -213,7 +243,7 @@ namespace YtDlpExtension.Helpers
         )
         {
             onStart?.Invoke();
-            _downloadBanner.UpdateState(DownloadState.Extracting);
+            downloadBanner.UpdateState(DownloadState.Extracting);
             var downloadPath = GetSettingsDownloadPath();
 
             var arguments = audioOnly switch
@@ -229,19 +259,21 @@ namespace YtDlpExtension.Helpers
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                WorkingDirectory = _settings.DownloadLocation
             };
 
             using var downloadProcess = new Process { StartInfo = psi };
 
             return await ExecuteDownloadProcessAsync(
                 psi,
+                downloadBanner,
                 onOutputData: (data) =>
                 {
                     if (Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%") is var match && match.Success)
                     {
                         var downloadProgress = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                        _downloadBanner.UpdateState(DownloadState.Downloading, "Downloading".ToLocalized(videoTitle), progressPercent: (uint)Math.Floor(downloadProgress));
+                        downloadBanner.UpdateState(DownloadState.Downloading, "Downloading".ToLocalized(videoTitle), progressPercent: (uint)Math.Floor(downloadProgress));
                     }
 
                     NotifyItemsChanged(data.Length);

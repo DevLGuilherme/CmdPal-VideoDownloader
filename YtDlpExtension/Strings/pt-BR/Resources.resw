@@ -123,11 +123,17 @@
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} já foi baixado</value>
   </data>
+  <data name="CancelDialogDescription" xml:space="preserve">
+    <value>Tem certeza que deseja cancelar o download?</value>
+  </data>
   <data name="CancelDownload" xml:space="preserve">
     <value>Cancelar Download</value>
   </data>
   <data name="Cancelled" xml:space="preserve">
     <value>Download cancelado</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirmar</value>
   </data>
   <data name="DownloadAudio" xml:space="preserve">
     <value>Baixar Audio ({0})</value>

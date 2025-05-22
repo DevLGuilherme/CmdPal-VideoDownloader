@@ -26,11 +26,12 @@ namespace YtDlpExtension.Pages
 
         public override IContent[] GetContent()
         {
+            var playlistTitle = _jsonData["playlistTitle"]?.ToString() ?? "";
             return [
                 new TreeContent
                 {
                     RootContent = new PlaylistFormContent(_settings, _jsonData, _ytDlp, _onSubmit),
-                    Children = []
+                    Children = [new MarkdownContent(Path.Combine(_settings.DownloadLocation, playlistTitle))]
                 }
             ];
         }
@@ -44,6 +45,7 @@ namespace YtDlpExtension.Pages
         private JObject _jsonData = new();
         private readonly DownloadHelper _ytDlp;
         private readonly Action<CancellationTokenSource> _onSubmit;
+        private readonly StatusMessage _playlistDownloadBanner = new();
         private JObject _templateJson = JObject.Parse($$"""
                 {
                     "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
@@ -208,10 +210,9 @@ namespace YtDlpExtension.Pages
             var downloadPathFromPayload = formInput["downloadPath"]?.ToString();
             bool audioOnly = formInput["audioOnly"]?.ToString().Contains("true") ?? false;
             var videoURL = _jsonData["videoURL"]?.ToString() ?? "";
-            var downloadPath = downloadPathFromPayload;
-            downloadPath ??= Path.Combine(_ytDlp.GetSettingsDownloadPath(), _playlistTitle);
+            var downloadPath = string.IsNullOrEmpty(downloadPathFromPayload) ? Path.Combine(_settings.DownloadLocation, _playlistTitle) : downloadPathFromPayload;
             var token = new CancellationTokenSource();
-            _ = _ytDlp.TryExecutePlaylistDownloadAsync(videoURL, downloadPath, resolution, audioOnly: audioOnly, cancellationToken: token.Token);
+            _ = _ytDlp.TryExecutePlaylistDownloadAsync(videoURL, _playlistDownloadBanner, downloadPath, resolution, audioOnly: audioOnly, cancellationToken: token.Token);
             _onSubmit.Invoke(token);
             return CommandResult.GoBack();
         }
