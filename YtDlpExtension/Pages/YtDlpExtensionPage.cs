@@ -20,7 +20,8 @@ namespace YtDlpExtension;
 
 internal sealed partial class YtDlpExtensionPage : DynamicListPage
 {
-    private readonly List<ListItem> _itens = new();
+    private List<ListItem> _itens = new();
+    private List<ListItem> _fallbackItems = new();
     private DownloadHelper _ytDlp;
     private readonly Dictionary<string, ListItem> _activeDownloads = new();
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\Logo.png");
@@ -63,9 +64,49 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     public override async void UpdateSearchText(string oldSearch, string newSearch)
     {
+
         if (oldSearch == newSearch) return;
 
-        var isPlaylist = newSearch.Contains("playlist") || newSearch.Contains("list=");
+        var oldAudioOnly = oldSearch.StartsWith('@');
+        var newAudioOnly = newSearch.StartsWith('@');
+
+        if (_fallbackItems == null || _fallbackItems.Count == 0)
+        {
+            // First Searh or empty list do a full search
+            await UpdateListAsync(newSearch);
+            return;
+        }
+
+        if (oldAudioOnly != newAudioOnly && (newSearch == oldSearch.TrimStart('@') || newSearch == ""))
+        {
+            // If an @ is typed or removed at the start of the string but the url remains the same
+            if (newAudioOnly)
+            {
+                // Apply local filter for "audio only"
+                _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
+            }
+            else
+            {
+                // Removes the filter and restores the list
+                _itens = _fallbackItems.ToList();
+            }
+            RaiseItemsChanged(_itens.Count);
+            return;
+        }
+
+        if (newSearch.StartsWith('@'))
+        {
+            var trimmedSearch = newSearch.TrimStart('@');
+
+            // If the base text remains the same, apply local filter
+            if (trimmedSearch == oldSearch.TrimStart('@'))
+            {
+                _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
+                RaiseItemsChanged(_itens.Count);
+                return;
+            }
+        }
+        // If the url is completely different the do a new search
         await UpdateListAsync(newSearch);
 
     }
@@ -102,21 +143,15 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             //Get all available formats
             var formats = videoInfo["formats"] as JArray;
             //Order formats by resolution, from highest to lowest
-            JToken[] formatsOrdered = [];
-            if (audioOnlyQuery)
-            {
-                formatsOrdered = formats?.Where(
-                f =>
-                    f?["vcodec"]?.ToString() == "none" &&
-                    f?["resolution"]?.ToString() == "audio only"
-                ).ToArray() ?? [];
-            }
-            else
-            {
-                formatsOrdered = formats?
-                    .OrderByDescending(format => format["height"]?.ToObject<int?>() ?? 0)
-                    .ToArray() ?? [];
-            }
+            JToken[] formatsOrdered = OrderByResolution(formats);
+            //if (audioOnlyQuery)
+            //{
+            //    formatsOrdered = FilterAudioOnlyFormats(formats) ?? [];
+            //}
+            //else
+            //{
+            //    formatsOrdered =;
+            //}
             // Get Video Thumbnail if exists
             string thumbnail = videoInfo["thumbnail"]?.ToString() ?? "MissingThumb".ToLocalized();
 
@@ -198,9 +233,13 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
                 if (formatObject != null)
                 {
-                    _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, formatObject, _ytDlp));
-                    RaiseItemsChanged();
+                    _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, formatObject, _ytDlp, _settingsManager));
                 }
+            }
+            _fallbackItems = _itens.ToList();
+            if (audioOnlyQuery)
+            {
+                _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
             }
             RaiseItemsChanged(_itens.Count);
             IsLoading = false;
@@ -216,7 +255,23 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             };
         }
         IsLoading = false;
+        RaiseItemsChanged(_itens.Count);
+    }
 
+    private static JToken[]? FilterAudioOnlyFormats(JArray? formats)
+    {
+        return formats?.Where(
+                        f =>
+                            f?["vcodec"]?.ToString() == "none" &&
+                            f?["resolution"]?.ToString() == "audio only"
+                        ).ToArray();
+    }
+
+    private static JToken[] OrderByResolution(JArray? formats)
+    {
+        return formats?
+            .OrderByDescending(format => format["height"]?.ToObject<int?>() ?? 0)
+            .ToArray() ?? [];
     }
 
     private void HandleError(string message)

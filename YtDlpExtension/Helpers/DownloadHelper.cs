@@ -113,7 +113,7 @@ namespace YtDlpExtension.Helpers
                 SetLoading(false);
             }
             SetLoading(false);
-            return downloadProcess.HasExited ? downloadProcess.ExitCode.ToString() : "-1";
+            return downloadProcess.HasExited ? downloadProcess.ExitCode.ToString(CultureInfo.InvariantCulture) : "-1";
         }
 
         public async Task<string> TryExecuteQueryAsync(string url, bool isPlaylist = false)

@@ -209,7 +209,7 @@ namespace YtDlpExtension.Pages
             bool audioOnly = formInput["audioOnly"]?.ToString().Contains("true") ?? false;
             var videoURL = _jsonData["videoURL"]?.ToString() ?? "";
             var downloadPath = downloadPathFromPayload;
-            if (downloadPath == "") downloadPath = Path.Combine(_ytDlp.GetSettingsDownloadPath(), _playlistTitle);
+            downloadPath ??= Path.Combine(_ytDlp.GetSettingsDownloadPath(), _playlistTitle);
             var token = new CancellationTokenSource();
             _ = _ytDlp.TryExecutePlaylistDownloadAsync(videoURL, downloadPath, resolution, audioOnly: audioOnly, cancellationToken: token.Token);
             _onSubmit.Invoke(token);

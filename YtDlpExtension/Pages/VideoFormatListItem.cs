@@ -7,11 +7,11 @@ using System.Threading;
 using YtDlpExtension.Helpers;
 namespace YtDlpExtension.Pages
 {
-    internal class VideoFormatListItem : ListItem
+    internal sealed partial class VideoFormatListItem : ListItem, IDisposable
     {
 
         private readonly DownloadHelper _ytDlp;
-        private CancellationTokenSource token = new();
+        private CancellationTokenSource _token = new();
         private readonly SettingsManager _settings;
         public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, JObject videoFormatObject, DownloadHelper ytDlp, SettingsManager settings)
         {
@@ -173,6 +173,11 @@ namespace YtDlpExtension.Pages
                 Body = $"""![Thumbnail]({thumbnail})""",
                 Metadata = detailsElements.ToArray(),
             };
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }
