@@ -4,23 +4,21 @@
 
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
-using Windows.System;
 using YtDlpExtension.Helpers;
-using YtDlpExtension.Pages;
 
 namespace YtDlpExtension;
 
 public partial class YtDlpExtensionCommandsProvider : CommandProvider
 {
     private readonly ICommandItem[] _commands;
-    private readonly IconInfo _logoIcon = IconHelpers.FromRelativePath("Assets\\Logo.png");
-    
+    private readonly IconInfo _logoIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
+
 
     private static SettingsManager _settings = new();
     private DownloadHelper _ytDlp = new(_settings);
     public YtDlpExtensionCommandsProvider()
     {
-        
+
         DisplayName = "Video Downloader";
         Settings = _settings.Settings;
         Icon = _logoIcon;
