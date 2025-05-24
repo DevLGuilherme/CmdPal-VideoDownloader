@@ -3,7 +3,7 @@ using System.IO;
 
 namespace YtDlpExtension.Helpers
 {
-    internal class SettingsManager : JsonSettingsManager
+    public class SettingsManager : JsonSettingsManager
     {
         private readonly TextSetting _downloadLocation = new("downloadLocation", DownloadHelper.GetDefaultDownloadPath())
         {

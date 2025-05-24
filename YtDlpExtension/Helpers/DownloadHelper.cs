@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace YtDlpExtension.Helpers
 {
-    internal sealed partial class DownloadHelper
+    public sealed partial class DownloadHelper
     {
         public event Action<string>? TitleUpdated;
         public event Action<bool>? LoadingChanged;
@@ -205,6 +205,7 @@ namespace YtDlpExtension.Helpers
             using var downloadProcess = new Process { StartInfo = psi };
             var currentDownload = string.Empty;
             var totalDownloads = string.Empty;
+            var progress = 0d;
             return await ExecuteDownloadProcessAsync(
                 psi,
                 downloadBanner,
@@ -218,8 +219,9 @@ namespace YtDlpExtension.Helpers
                     }
                     if (Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%") is var match && match.Success)
                     {
-                        var downloadProgress = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                        downloadBanner.UpdateState(DownloadState.Downloading, "DownloadingPlaylist".ToLocalized(currentDownload, totalDownloads), progressPercent: (uint)Math.Floor(downloadProgress));
+                        var downloadProgressParse = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                        progress = downloadProgressParse > 0 ? downloadProgressParse : progress;
+                        downloadBanner.UpdateState(DownloadState.Downloading, "DownloadingPlaylist".ToLocalized(currentDownload, totalDownloads), progressPercent: (uint)Math.Floor(progress));
                     }
                 },
                 onStart,
@@ -248,8 +250,8 @@ namespace YtDlpExtension.Helpers
 
             var arguments = audioOnly switch
             {
-                false => $"--abort-on-unavailable-fragment --no-mtime --no-playlist -P \"{downloadPath}\" -f \"{videoFormatId}+{audioFormatId}\" --merge-output-format {GetSettingsVideoOutputFormat()} {url}",
-                true => $"--abort-on-unavailable-fragment --no-mtime --no-playlist -P \"{downloadPath}\" -f \"{audioFormatId}\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()} \"{url}\""
+                false => $"--verbose --no-mtime --no-playlist  -P \"{downloadPath}\" -f \"{videoFormatId}+{audioFormatId}/{videoFormatId}+ba/{videoFormatId}/best\" --merge-output-format {GetSettingsVideoOutputFormat()} \"{url}\"",
+                true => $"--verbose --no-mtime --no-playlist -P \"{downloadPath}\" -f \"{audioFormatId}/bestaudio/ba/best\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()} \"{url}\""
             };
 
             var psi = new ProcessStartInfo
@@ -257,14 +259,13 @@ namespace YtDlpExtension.Helpers
                 FileName = "yt-dlp",
                 Arguments = arguments,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                RedirectStandardError = false,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                WorkingDirectory = _settings.DownloadLocation
             };
 
             using var downloadProcess = new Process { StartInfo = psi };
-
+            var progress = 0d;
             return await ExecuteDownloadProcessAsync(
                 psi,
                 downloadBanner,
@@ -272,8 +273,9 @@ namespace YtDlpExtension.Helpers
                 {
                     if (Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%") is var match && match.Success)
                     {
-                        var downloadProgress = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                        downloadBanner.UpdateState(DownloadState.Downloading, "Downloading".ToLocalized(videoTitle), progressPercent: (uint)Math.Floor(downloadProgress));
+                        var downloadProgressParse = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                        progress = downloadProgressParse > 0 ? downloadProgressParse : progress;
+                        downloadBanner.UpdateState(DownloadState.Downloading, "Downloading".ToLocalized(videoTitle), progressPercent: (uint)Math.Floor(progress));
                     }
 
                     NotifyItemsChanged(data.Length);
