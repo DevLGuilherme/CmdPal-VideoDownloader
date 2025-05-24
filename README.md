@@ -1,13 +1,11 @@
+<div align="center">
+     <img src="YtDlpExtension/Assets/StoreLogo.scale-100.png" alt="Logo"/>
+     <div><h1>  Video Downloader<br><p>For PowerToys</p></h1><br></div>
+</div>
+<div align="center">     
+<img src="Images/SneakPeek.png" style="width: 900px" alt="SneakPeek"/>
+</div>
 
-
-<center>
-     <img src="Images/SneakPeek.png" style="width: 900px" alt="SneakPeek">
-     <div style="display: flex; align-items: center; justify-content: center">   
-        <img src="YtDlpExtension/Assets/StoreLogo.scale-100.png" alt="Logo">
-        <b style="font-size: 24pt">Video Downloader</b>
-     </div>
-        for PowerToys Command Palette
-</center>
 
 # 📝 Note
 This extension is currently in development, and a release will be out soon.
