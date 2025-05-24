@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace YtDlpExtension.Helpers
 {
-    internal enum DownloadState
+    public enum DownloadState
     {
         Extracting,
         Downloading,
@@ -17,7 +17,7 @@ namespace YtDlpExtension.Helpers
         CustomMessage
     }
 
-    internal static class DownloadStatusManager
+    public static class DownloadStatusManager
     {
         private static readonly ConditionalWeakTable<StatusMessage, DownloadStatusState> _states = new();
 

@@ -9,7 +9,7 @@ using YtDlpExtension.Helpers;
 using YtDlpExtension.Metada;
 namespace YtDlpExtension.Pages
 {
-    internal sealed partial class VideoFormatListItem : ListItem, IDisposable
+    public sealed partial class VideoFormatListItem : ListItem, IDisposable
     {
 
         private readonly DownloadHelper _ytDlp;
@@ -17,6 +17,9 @@ namespace YtDlpExtension.Pages
         private readonly SettingsManager _settings;
         private StatusMessage _downloadBanner = new();
         private StatusMessage _downloadAudioOnlyBanner = new();
+
+        public DownloadState GetDownloadState => _downloadBanner.CurrentState();
+
         public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, Format videoFormatObject, DownloadHelper ytDlp, SettingsManager settings)
         {
             var uiSettings = new UISettings();
@@ -107,7 +110,7 @@ namespace YtDlpExtension.Pages
 
             startDownloadCommand = new AnonymousCommand(async () =>
             {
-                _ = await _ytDlp.TryExecuteDownloadAsync(
+                await _ytDlp.TryExecuteDownloadAsync(
                         queryURL,
                         _downloadBanner,
                         videoTitle,
@@ -119,7 +122,7 @@ namespace YtDlpExtension.Pages
                     );
             })
             {
-                Name = "Download",
+                Name = $"Download ({settings.GetSelectedVideoOutputFormat})",
                 Icon = new IconInfo("\uE896"),
                 Result = CommandResult.KeepOpen()
             };
@@ -128,7 +131,13 @@ namespace YtDlpExtension.Pages
 
 
         }
-        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, VideoData videoSingleFormat, DownloadHelper ytDlp, SettingsManager settings)
+
+        public VideoFormatListItem(ICommand command)
+        {
+            Command = command;
+        }
+
+        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, VideoData videoSingleFormat, DownloadHelper ytDlp, SettingsManager settings, bool isBestFormat = false)
         {
             var uiSettings = new UISettings();
             var accentColor = uiSettings.GetColorValue(UIColorType.Accent);
@@ -138,7 +147,9 @@ namespace YtDlpExtension.Pages
             var formatId = videoSingleFormat.FormatID ?? "";
             var resolution = videoSingleFormat.resolution ?? "";
             var ext = videoSingleFormat.Extension ?? "";
-            List<Tag> _tags = [new Tag(formatId),
+
+            List<Tag> _tags = [
+                new Tag(formatId),
                 new Tag(ext) {
                     Background = new OptionalColor(true, new Color(accentColor.R, accentColor.G, accentColor.B, accentColor.A)),
                     Foreground = new OptionalColor(true, new Color(foregroundColor.R, foregroundColor.G, foregroundColor.B, foregroundColor.A))
@@ -219,7 +230,7 @@ namespace YtDlpExtension.Pages
 
             startDownloadCommand = new AnonymousCommand(async () =>
             {
-                _ = await _ytDlp.TryExecuteDownloadAsync(
+                await _ytDlp.TryExecuteDownloadAsync(
                         queryURL,
                         _downloadBanner,
                         videoTitle,
@@ -228,7 +239,7 @@ namespace YtDlpExtension.Pages
                         onFinish: onDownloadFinished,
                         onAlreadyDownloaded: onAlreadyDownloaded,
                         cancellationToken: _token.Token
-                    );
+                 );
             })
             {
                 Name = "Download",

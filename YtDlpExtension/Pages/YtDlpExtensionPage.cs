@@ -21,12 +21,17 @@ namespace YtDlpExtension;
 
 internal sealed partial class YtDlpExtensionPage : DynamicListPage
 {
-    private List<ListItem> _itens = new();
-    private List<ListItem> _fallbackItems = new();
+    private List<VideoFormatListItem> _itens = new();
+    private List<VideoFormatListItem> _fallbackItems = new();
     private DownloadHelper _ytDlp;
-    private readonly Dictionary<string, ListItem> _activeDownloads = new();
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
     private readonly SettingsManager _settingsManager;
+
+    public List<VideoFormatListItem> GetActiveDownloads()
+    {
+        return _itens.Where(item => item.GetDownloadState == DownloadState.Downloading).ToList();
+    }
+
     public YtDlpExtensionPage(SettingsManager settingsManager, DownloadHelper ytDlp)
     {
         _settingsManager = settingsManager;
@@ -59,6 +64,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         _ytDlp.TitleUpdated += title => Title = title;
         _ytDlp.LoadingChanged += loading => IsLoading = loading;
         _ytDlp.ItemsChanged += count => RaiseItemsChanged(count);
+        _ytDlp.RequestActiveDownloads += GetActiveDownloads;
         UpdateSearchText(string.Empty, string.Empty);
     }
 
@@ -128,7 +134,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     private void ApplyLocalFormatFilter(string videoFormat, string audioFormat)
     {
-        List<ListItem> FilterFormatCandidates(string format, bool audioOnly)
+        List<VideoFormatListItem> FilterFormatCandidates(string format, bool audioOnly)
         {
             var candidates = _fallbackItems
                 .Where(item => (audioOnly ? item.Title == "audio only" : item.Title != "audio only") &&
@@ -141,7 +147,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 var exact = candidates.FirstOrDefault(item =>
                     item.Tags.Any(tag => tag.Text.Equals(format, StringComparison.OrdinalIgnoreCase)));
                 if (exact != null)
-                    return new List<ListItem> { exact };
+                    return new List<VideoFormatListItem> { exact };
             }
 
             return candidates;
@@ -160,7 +166,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             var videoCandidates = FilterFormatCandidates(videoFormat, audioOnly: false);
             var audioCandidates = FilterFormatCandidates(audioFormat, audioOnly: true);
 
-            var result = new List<ListItem>();
+            var result = new List<VideoFormatListItem>();
             if (videoCandidates.Count > 0)
                 result.AddRange(videoCandidates);
             if (audioCandidates.Count > 0)
@@ -206,7 +212,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
         IsLoading = true;
         var isPlaylist = queryText.Contains("playlist") || queryText.Contains("list=");
-        string jsonResult = await _ytDlp.TryExecuteQueryAsync(queryURL);
+        var (jsonResult, bestformat) = await _ytDlp.TryExecuteQueryAsync(queryURL);
 
         if (string.IsNullOrEmpty(jsonResult))
         {
@@ -247,12 +253,12 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         ["thumbnail"] = thumbnail,
                         ["videoURL"] = queryURL
                     };
-                    Title = "FetchingPlaylistTitle".ToLocalized();
+                    //Title = "FetchingPlaylistTitle".ToLocalized();
                     //_ytDlp._downloadBanner.UpdateState(DownloadState.CustomMessage, "FetchingPlaylistTitle".ToLocalized(), true);
                     //_ytDlp._downloadBanner.ShowStatus();
                     IsLoading = true;
                     //The form page will be set after the data from the playlist is fetched
-                    var listItem = new ListItem(new NoOpCommand())
+                    var listItem = new VideoFormatListItem(new NoOpCommand())
                     {
                         Tags = [new Tag("Playlist")],
                         Icon = new IconInfo("\uE895"),
@@ -303,7 +309,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         listItem.Title = "PlaylistFetchedTitle".ToLocalized();
                         listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
                         listItem.Icon = new IconInfo("\uE90B");
-                        Title = "PlaylistFetchedTitle".ToLocalized();
+                        //Title = "PlaylistFetchedTitle".ToLocalized();
                         RaiseItemsChanged(1);
                         //_ytDlp._downloadBanner.Hide();
                     });

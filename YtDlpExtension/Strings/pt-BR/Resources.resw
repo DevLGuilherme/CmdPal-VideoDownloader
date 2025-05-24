@@ -148,8 +148,8 @@
     <value>Baixando {0} de {1}</value>
   </data>
   <data name="EmptyContentTiltle" xml:space="preserve">
-    <value>🎥 Cole uma URL para baixar o vídeo.
-🎧 Comece com @ para apenas áudio.</value>
+    <value>Cole uma URL para baixar o vídeo.
+Comece com @ para apenas áudio.</value>
   </data>
   <data name="EmptyDataYtDlp" xml:space="preserve">
     <value>Nenhum dado recebido do yt-dlp</value>

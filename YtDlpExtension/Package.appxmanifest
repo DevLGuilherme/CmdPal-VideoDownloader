@@ -35,7 +35,7 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="CmdPal Video Downloader"
+        DisplayName="Video Downloader"
         Description="Yt-Dlp extension for Microsoft PowerToys Command Palette"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"

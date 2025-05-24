@@ -1,6 +1,7 @@
 ﻿using Microsoft.CommandPalette.Extensions.Toolkit;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using YtDlpExtension.Pages;
 
 namespace YtDlpExtension.Helpers
 {
@@ -16,8 +18,25 @@ namespace YtDlpExtension.Helpers
         public event Action<string>? TitleUpdated;
         public event Action<bool>? LoadingChanged;
         public event Action<int>? ItemsChanged;
-        //        public readonly DownloadStatusManager _downloadBanner = new();
+        public event Func<List<VideoFormatListItem>>? RequestActiveDownloads;
+
         private readonly SettingsManager _settings;
+
+        private DateTime _lastThrottle = DateTime.MinValue;
+        private readonly object _throttleLock = new();
+        private void Throttle(Action<string> action, string data, int milliseconds = 500)
+        {
+            lock (_throttleLock)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastThrottle).TotalMilliseconds >= milliseconds)
+                {
+                    _lastThrottle = now;
+                    action(data);
+                }
+            }
+        }
+
         private void SetTitle(string title) => TitleUpdated?.Invoke(title);
         private void SetLoading(bool isLoading) => LoadingChanged?.Invoke(isLoading);
         private void NotifyItemsChanged(int delta = 0) => ItemsChanged?.Invoke(delta);
@@ -56,18 +75,32 @@ namespace YtDlpExtension.Helpers
             {
                 if (!string.IsNullOrEmpty(args.Data))
                 {
-                    SetTitle(args.Data);
-                    if (args.Data.Contains("has already been downloaded"))
+                    Throttle((data) =>
                     {
-                        alreadyDownloaded = true;
-                        var fullLogMessage = args.Data.Split("has")[0];
-                        var videoTitle = fullLogMessage.Split("[download]")[1].Trim();
-                        SetTitle("⚠️ The video has already been downloaded");
-                        downloadBanner.UpdateState(DownloadState.AlreadyDownloaded, videoTitle);
-                        onAlreadyDownloaded?.Invoke();
-                    }
+                        var ativos = RequestActiveDownloads?.Invoke() ?? new List<VideoFormatListItem>();
+                        onOutputData?.Invoke(data);
+                        if (ativos.Count > 1)
+                        {
+                            SetTitle($"Na fila");
+                        }
+                        else
+                        {
 
-                    onOutputData?.Invoke(args.Data);
+                            SetTitle(data);
+                        }
+                        if (data.Contains("has already been downloaded"))
+                        {
+                            alreadyDownloaded = true;
+                            var fullLogMessage = data.Split("has")[0];
+                            var videoTitle = fullLogMessage.Split("[download]")[1].Trim();
+                            SetTitle("⚠️ The video has already been downloaded");
+                            downloadBanner.UpdateState(DownloadState.AlreadyDownloaded, videoTitle);
+                            onAlreadyDownloaded?.Invoke();
+                        }
+
+
+
+                    }, args.Data, 200);
                 }
             };
 
@@ -79,7 +112,6 @@ namespace YtDlpExtension.Helpers
                 downloadBanner.UpdateState(DownloadState.Extracting);
 
                 downloadProcess.Start();
-                SetLoading(true);
                 downloadBanner.ShowStatus();
                 downloadProcess.BeginOutputReadLine();
 
@@ -103,30 +135,25 @@ namespace YtDlpExtension.Helpers
                 {
                     SetTitle("✅ Download finished");
                     downloadBanner.UpdateState(DownloadState.Finished);
-                    SetLoading(false);
                     onFinish?.Invoke();
                 }
                 else if (isCancelled)
                 {
                     SetTitle("⛔ Download cancelled");
                     downloadBanner.UpdateState(DownloadState.Cancelled);
-                    SetLoading(false);
                 }
             }
             catch (OperationCanceledException)
             {
                 SetTitle("⛔ Download cancelled");
                 downloadBanner.UpdateState(DownloadState.Cancelled);
-                SetLoading(false);
             }
-            SetLoading(false);
             return downloadProcess.HasExited ? downloadProcess.ExitCode.ToString(CultureInfo.InvariantCulture) : "-1";
         }
 
-        public async Task<string> TryExecuteQueryAsync(string url)
+        public async Task<(string, string)> TryExecuteQueryAsync(string url)
         {
-            SetLoading(true);
-            var arguments = "--dump-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose";
+            var arguments = "--dump-single-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose";
 
             var psi = new ProcessStartInfo
             {
@@ -141,9 +168,23 @@ namespace YtDlpExtension.Helpers
             using var process = new Process { StartInfo = psi };
 
             var outputBuilder = new StringBuilder();
+            var bestformat = string.Empty;
+
+            process.ErrorDataReceived += (sender, args) =>
+            {
+                if (string.IsNullOrWhiteSpace(args.Data))
+                    return;
+
+                var line = args.Data.Trim();
+                if (line.Contains("[info]"))
+                {
+                    bestformat = line;
+                }
+            };
 
             process.OutputDataReceived += (sender, args) =>
             {
+
                 if (string.IsNullOrWhiteSpace(args.Data))
                     return;
 
@@ -156,7 +197,9 @@ namespace YtDlpExtension.Helpers
             };
 
             process.Start();
+            process.BeginErrorReadLine();
             process.BeginOutputReadLine();
+
 
 
             await process.WaitForExitAsync();
@@ -164,13 +207,13 @@ namespace YtDlpExtension.Helpers
             var output = outputBuilder.ToString();
 
             SetTitle(!string.IsNullOrEmpty(output)
-                ? $"✅ Available Formats for: {url}"
+                ? $"Best format {bestformat}"
                 : "yt-dlp-extension");
 
             NotifyItemsChanged();
             SetLoading(false);
 
-            return output;
+            return (output, bestformat);
         }
 
         public async Task<string> TryExecutePlaylistDownloadAsync(
@@ -250,10 +293,9 @@ namespace YtDlpExtension.Helpers
 
             var arguments = audioOnly switch
             {
-                false => $"--verbose --no-mtime --no-playlist  -P \"{downloadPath}\" -f \"{videoFormatId}+{audioFormatId}/{videoFormatId}+ba/{videoFormatId}/best\" --merge-output-format {GetSettingsVideoOutputFormat()} \"{url}\"",
-                true => $"--verbose --no-mtime --no-playlist -P \"{downloadPath}\" -f \"{audioFormatId}/bestaudio/ba/best\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()} \"{url}\""
+                false => $"--verbose --no-mtime --no-playlist -o \"%(title)s - %(format_id)s - %(resolution)s.%(ext)s\"  -P \"{downloadPath}\" -f \"{videoFormatId}+{audioFormatId}[acodec!=opus]/{videoFormatId}+ba/{videoFormatId}/best\" --merge-output-format {GetSettingsVideoOutputFormat()} \"{url}\"",
+                true => $"--verbose --no-mtime --no-playlist -o \"%(title)s - %(format_id)s - %(resolution)s.%(ext)s\" -P \"{downloadPath}\" -f \"{audioFormatId}/bestaudio/ba/best\" --extract-audio --audio-format {GetSettingsAudioOutputFormat()} \"{url}\""
             };
-
             var psi = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
@@ -275,10 +317,10 @@ namespace YtDlpExtension.Helpers
                     {
                         var downloadProgressParse = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
                         progress = downloadProgressParse > 0 ? downloadProgressParse : progress;
-                        downloadBanner.UpdateState(DownloadState.Downloading, "Downloading".ToLocalized(videoTitle), progressPercent: (uint)Math.Floor(progress));
+                        downloadBanner.UpdateState(DownloadState.Downloading, $"{"Downloading".ToLocalized(videoTitle)}\n({progress}%)", progressPercent: (uint)Math.Floor(progress));
                     }
 
-                    NotifyItemsChanged(data.Length);
+                    // NotifyItemsChanged(1);
                 },
                 onStart,
                 onFinish,
