@@ -120,8 +120,17 @@
   <data name="ACodec" xml:space="preserve">
     <value>Audio Codec</value>
   </data>
+  <data name="AdvancedOptions" xml:space="preserve">
+    <value>Advanced Options</value>
+  </data>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} already downloaded</value>
+  </data>
+  <data name="AudioOutputFormat" xml:space="preserve">
+    <value>Audio Output Format</value>
+  </data>
+  <data name="BestAvailable" xml:space="preserve">
+    <value>Best available</value>
   </data>
   <data name="CancelDialogDescription" xml:space="preserve">
     <value>Are you sure you want to cancel the download?</value>
@@ -135,8 +144,20 @@
   <data name="Confirm" xml:space="preserve">
     <value>Confirm</value>
   </data>
+  <data name="CustomFormatSelector" xml:space="preserve">
+    <value>Custom Format Selector</value>
+  </data>
+  <data name="Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
   <data name="DownloadAudio" xml:space="preserve">
     <value>Download Audio ({0})</value>
+  </data>
+  <data name="DownloadAudioOnly" xml:space="preserve">
+    <value>Download audio only</value>
+  </data>
+  <data name="DownloadDirectory" xml:space="preserve">
+    <value>Download Directory</value>
   </data>
   <data name="Downloaded" xml:space="preserve">
     <value>Download complete</value>
@@ -147,12 +168,21 @@
   <data name="DownloadingPlaylist" xml:space="preserve">
     <value>Downloading {0} of {1}</value>
   </data>
+  <data name="DownloadingSubtitle" xml:space="preserve">
+    <value>Downloading subtitle: {0}</value>
+  </data>
   <data name="EmptyContentTiltle" xml:space="preserve">
     <value>Paste an URL to download the video.
 Start with @ for audio only.</value>
   </data>
   <data name="EmptyDataYtDlp" xml:space="preserve">
     <value>No data received from yt-dlp</value>
+  </data>
+  <data name="End" xml:space="preserve">
+    <value>End</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
   </data>
   <data name="Extension" xml:space="preserve">
     <value>Extension</value>
@@ -168,6 +198,15 @@ Start with @ for audio only.</value>
   </data>
   <data name="FormatId" xml:space="preserve">
     <value>Format ID</value>
+  </data>
+  <data name="InQueue" xml:space="preserve">
+    <value>In Queue</value>
+  </data>
+  <data name="ListAutoCaptions" xml:space="preserve">
+    <value>Auto Captions</value>
+  </data>
+  <data name="ListSubtitles" xml:space="preserve">
+    <value>Subtitles</value>
   </data>
   <data name="MissingThumb" xml:space="preserve">
     <value>Missing Thumbnail</value>
@@ -190,10 +229,28 @@ Start with @ for audio only.</value>
   <data name="Resolution" xml:space="preserve">
     <value>Resolution</value>
   </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
   <data name="Size" xml:space="preserve">
     <value>Size</value>
   </data>
+  <data name="Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="TrimTimeError" xml:space="preserve">
+    <value>The start time cannot be greater than or equal to end time.</value>
+  </data>
+  <data name="TrimVideo" xml:space="preserve">
+    <value>Trim video</value>
+  </data>
   <data name="VCodec" xml:space="preserve">
     <value>Video Codec</value>
+  </data>
+  <data name="VideoOutputFormat" xml:space="preserve">
+    <value>Video Output Format</value>
+  </data>
+  <data name="VideoResolution" xml:space="preserve">
+    <value>Video resolution</value>
   </data>
 </root>

@@ -31,7 +31,7 @@ namespace YtDlpExtension.Pages
                 new TreeContent
                 {
                     RootContent = new PlaylistFormContent(_settings, _jsonData, _ytDlp, _onSubmit),
-                    Children = [new MarkdownContent(Path.Combine(_settings.DownloadLocation, playlistTitle))]
+                    Children = []
                 }
             ];
         }
@@ -46,27 +46,35 @@ namespace YtDlpExtension.Pages
         private readonly DownloadHelper _ytDlp;
         private readonly Action<CancellationTokenSource> _onSubmit;
         private readonly StatusMessage _playlistDownloadBanner = new();
-        private JObject _templateJson = JObject.Parse($$"""
+        public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit)
+        {
+            _settings = settings;
+            _ytDlp = ytDlp;
+            _onSubmit = onSubmit;
+            var videoURL = jsonData["videoURL"]?.ToString();
+            var title = jsonData["title"]?.ToString();
+            var thumbnail = jsonData["thumbnail"]?.ToString();
+            var downloadPath = jsonData["downloadPath"]?.ToString();
+            var downloadPathJson = downloadPath?.Replace(@"\", @"\\"); ;
+            var playlistCount = jsonData["playlistCount"]?.ToString() ?? "1";
+            _playlistTitle = jsonData["playlistTitle"]?.ToString() ?? "";
+            _jsonData?.Add("title", videoURL);
+            _jsonData?.Add("videoURL", videoURL);
+            _jsonData?.Add("thumbnail", thumbnail);
+            _jsonData?.Add("downloadPath", downloadPath);
+            var templateJson = $$"""
                 {
-                    "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
                     "type": "AdaptiveCard",
-                    "version": "1.5",
+                    "version": "1.6",
                     "body": [
                         {
                             "type": "TextBlock",
                             "id": "playlistTitle",
-                            "text": "📺 Playlist: ${playlistTitle}",
+                            "text": "Playlist: ${playlistTitle}",
                             "wrap": true,
                             "weight": "Bolder",
                             "size": "Large"
-                        },
-                        {
-                            "type": "TextBlock",
-                            "id": "${playlistCount}",
-                            "text": "${playlistCount}",
-                            "wrap": true,
-                            "weight": "Bolder",
-                            "size": "Medium"
                         },
                         {
                             "type": "ColumnSet",
@@ -75,6 +83,14 @@ namespace YtDlpExtension.Pages
                                     "type": "Column",
                                     "width": "stretch",
                                     "items": [
+                                        {
+                                            "type": "TextBlock",
+                                            "id": "playlistCount",
+                                            "text": "{{"playlistCount".ToLocalized(playlistCount ?? "0")}}",
+                                            "wrap": true,
+                                            "weight": "Bolder",
+                                            "size": "Medium"
+                                        },
                                         {
                                             "type": "Image",
                                             "url": "${thumbnail}"
@@ -88,46 +104,57 @@ namespace YtDlpExtension.Pages
                                         {
                                             "type": "Input.Text",
                                             "id": "downloadPath",
-                                            "label": "Local de download",
-                                            "placeholder": "${downloadPath}"
+                                            "label": "{{"DownloadDirectory".ToLocalized()}}",
+                                            "placeholder": "${downloadPath}",
+                                            "value": "{{downloadPathJson}}",
+                                            "isRequired": true,
+                                            "errorMessage": "Must have a path"
+                                        },
+                                        {
+                                            "type": "Input.Text",
+                                            "id": "customFormat",
+                                            "label": "{{"CustomFormatSelector".ToLocalized()}}",
+                                            "placeholder": "",
+                                            "isVisible": false
                                         },
                                         {
                                             "type": "Input.ChoiceSet",
+                                            "isVisible": true,
                                             "id": "resolution",
-                                            "label": "Resolução dos vídeos",
-                                            "value": "best",
+                                            "label": "{{"VideoResolution".ToLocalized()}}",
+                                            "value": "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[ext=mp4][vcodec^=avc1]",
                                             "choices": [
                                                 {
-                                                    "title": "Melhor disponível",
-                                                    "value": "best"
+                                                    "title": "{{"BestAvailable".ToLocalized()}}",
+                                                    "value": "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "2160p (4K)",
-                                                    "value": "bestvideo[height<=2160]+bestaudio/best[height<=2160]"
+                                                    "value": "bestvideo[height<=2160][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=2160][ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "1440p (2K)",
-                                                    "value": "bestvideo[height<=1440]+bestaudio/best[height<=1440]"
+                                                    "value": "bestvideo[height<=1440][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=1440][ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "1080p (Full HD)",
-                                                    "value": "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+                                                    "value": "bestvideo[height<=1080][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=1080][ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "720p (HD)",
-                                                    "value": "bestvideo[height<=720]+bestaudio/best[height<=720]"
+                                                    "value": "bestvideo[height<=720][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=720][ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "480p (SD)",
-                                                    "value": "bestvideo[height<=480]+bestaudio/best[height<=480]"
+                                                    "value": "bestvideo[height<=480][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=480][ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "360p",
-                                                    "value": "bestvideo[height<=360]+bestaudio/best[height<=360]"
+                                                    "value": "bestvideo[height<=360][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=360][ext=mp4][vcodec^=avc1]"
                                                 },
                                                 {
                                                     "title": "240p",
-                                                    "value": "bestvideo[height<=240]+bestaudio/best[height<=240]"
+                                                    "value": "bestvideo[height<=240][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a][acodec^=mp4a]/best[height<=240][ext=mp4][vcodec^=avc1]"
                                                 }
                                             ]
                                         },
@@ -136,64 +163,93 @@ namespace YtDlpExtension.Pages
                                             "columns": [
                                                 {
                                                     "type": "Column",
-                                                    "width": "stretch",
+                                                    "verticalContentAlignment": "Bottom",
+                                                    "width": "auto",
                                                     "items": [
                                                         {
-                                                            "type": "Input.Toggle",
-                                                            "title": "Download Only Audio",
-                                                            "id": "audioOnly"
+                                                            "type": "Input.Number",
+                                                            "placeholder": "{{"Start".ToLocalized()}}",
+                                                            "label": "{{"Start".ToLocalized()}}",
+                                                            "id": "playlistStart",
+                                                            "min": 1,
+                                                            "value": 1,
+                                                            "max": {{playlistCount}},
+                                                            "isRequired": true,
+                                                            "errorMessage": "Must have a number between 1 and {{playlistCount}}"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "verticalContentAlignment": "Bottom",
+                                                    "width": "auto",
+                                                    "items": [
+                                                        {
+                                                            "type": "Input.Number",
+                                                            "label": "{{"End".ToLocalized()}}",
+                                                            "id": "playlistEnd",
+                                                            "value": {{playlistCount}},
+                                                            "min": 1,
+                                                            "max": {{playlistCount}},
+                                                            "isRequired": true,
+                                                            "errorMessage": "Must have a number between 1 and {{playlistCount}}"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "verticalContentAlignment": "Top",
+                                                    "width": "auto",
+                                                    "items": [
+                                                        {
+                                                          "type": "TextBlock",
+                                                          "text": " ",
+                                                          "spacing": "None"
                                                         },
                                                         {
-                                                            "type": "ActionSet",
-                                                            "actions": [
-                                                                {
-                                                                    "type": "Action.Submit",
-                                                                    "title": "Download",
-                                                                    "data": {
-                                                                        "actions": "downloadPlaylist"
-                                                                    }
-                                                                },
-                                                                {
-                                                                    "type": "Action.Execute",
-                                                                    "title": "Voltar",
-                                                                    "data": {
-                                                                        "actions": "goBack"
-                                                                    }
-                                                                }
-                                                            ],
-                                                            "spacing": "Padding",
-                                                            "horizontalAlignment": "Center"
+                                                            "type": "Input.Toggle",
+                                                            "title": "{{"DownloadAudioOnly".ToLocalized()}}",
+                                                            "id": "audioOnly"
                                                         }
-                                                    ],
-                                                    "rtl": false,
-                                                    "horizontalAlignment": "Center",
-                                                    "verticalContentAlignment": "Center",
-                                                    "roundedCorners": true
+                                                    ]
                                                 }
                                             ]
+                                        },
+                                        {
+                                            "type": "ActionSet",
+                                            "actions": [
+                                                {
+                                                    "type": "Action.Submit",
+                                                    "title": "Download",
+                                                    "data": {
+                                                        "actions": "downloadPlaylist"
+                                                    }
+                                                },
+                                                {
+                                                    "type": "Action.ToggleVisibility",
+                                                    "title": "{{"AdvancedOptions".ToLocalized()}}",
+                                                    "targetElements": [
+                                                        "customFormat",
+                                                        "resolution"
+                                                    ]
+                                                }
+                                            ],
+                                            "spacing": "Padding",
+                                            "horizontalAlignment": "Center"
                                         }
-                                    ]
+                                    ],
+                                    "rtl": false,
+                                    "horizontalAlignment": "Center",
+                                    "verticalContentAlignment": "Center",
+                                    "roundedCorners": true
                                 }
                             ]
                         }
                     ]
                 }
-                """);
-        public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit)
-        {
-            _settings = settings;
-            _ytDlp = ytDlp;
-            _onSubmit = onSubmit;
-            var videoURL = jsonData["videoURL"]?.ToString();
-            var title = jsonData["title"]?.ToString();
-            var thumbnail = jsonData["thumbnail"]?.ToString();
-            var downloadPath = jsonData["downloadPath"]?.ToString();
-            _playlistTitle = jsonData["playlistTitle"]?.ToString() ?? "";
-            _jsonData?.Add("title", videoURL);
-            _jsonData?.Add("videoURL", videoURL);
-            _jsonData?.Add("thumbnail", thumbnail);
-            _jsonData?.Add("downloadPath", downloadPath);
-            TemplateJson = _templateJson.ToString();
+                """;
+
+            TemplateJson = templateJson;
             DataJson = jsonData.ToString();
         }
 
@@ -209,10 +265,34 @@ namespace YtDlpExtension.Pages
             var resolution = formInput["resolution"]?.ToString() ?? "best";
             var downloadPathFromPayload = formInput["downloadPath"]?.ToString();
             bool audioOnly = formInput["audioOnly"]?.ToString().Contains("true") ?? false;
+            string playlistStart = formInput["playlistStart"]?.ToString() ?? "1";
+            string playlistEnd = formInput["playlistEnd"]?.ToString() ?? "1";
+            string customFormat = formInput["customFormat"]?.ToString() ?? "";
+
             var videoURL = _jsonData["videoURL"]?.ToString() ?? "";
             var downloadPath = string.IsNullOrEmpty(downloadPathFromPayload) ? Path.Combine(_settings.DownloadLocation, _playlistTitle) : downloadPathFromPayload;
             var token = new CancellationTokenSource();
-            _ = _ytDlp.TryExecutePlaylistDownloadAsync(videoURL, _playlistDownloadBanner, downloadPath, resolution, audioOnly: audioOnly, cancellationToken: token.Token);
+            CommandResult.Confirm(new ConfirmationArgs()
+            {
+                Description = formInput.ToString(),
+                Title = "Payload",
+                PrimaryCommand = new NoOpCommand()
+                {
+
+                }
+
+            });
+            _ = _ytDlp.TryExecutePlaylistDownloadAsync(
+                videoURL,
+                _playlistDownloadBanner,
+                downloadPath,
+                resolution,
+                playlistStart,
+                playlistEnd,
+                customFormat,
+                audioOnly: audioOnly,
+                cancellationToken: token.Token
+             );
             _onSubmit.Invoke(token);
             return CommandResult.GoBack();
         }

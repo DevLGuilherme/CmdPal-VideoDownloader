@@ -80,9 +80,9 @@ namespace YtDlpExtension.Metada
         [JsonPropertyName("location")]
         public string? Location { get; set; }
         [JsonPropertyName("subtitles")]
-        public Dictionary<string, SubtitleData[]>? Subtitles { get; set; }
+        public Subtitle? Subtitles { get; set; }
         [JsonPropertyName("automatic_captions")]
-        public Dictionary<string, SubtitleData[]>? AutomaticCaptions { get; set; }
+        public Subtitle? AutomaticCaptions { get; set; }
         [JsonPropertyName("duration")]
         public float? Duration { get; set; }
         [JsonPropertyName("view_count")]
@@ -396,11 +396,11 @@ namespace YtDlpExtension.Metada
         public string? __yt_dlp_client { get; set; }
     }
 
-    public class Subtitle : Dictionary<string, SubtitleData>
+    public class Subtitle : Dictionary<string, SubtitleData[]>
     {
     }
 
-    public class AutomaticCaptions : Dictionary<string, SubtitleData>
+    public class AutomaticCaptions : Dictionary<string, SubtitleData[]>
     {
     }
 
