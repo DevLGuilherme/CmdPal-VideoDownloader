@@ -45,7 +45,7 @@ namespace YtDlpExtension.Helpers
             (banner.Message, banner.State, banner.Progress) = state switch
             {
                 DownloadState.Extracting => ("Extracting".ToLocalized(), MessageState.Info, new ProgressState { IsIndeterminate = true }),
-                DownloadState.Downloading => (message, MessageState.Info, new ProgressState { IsIndeterminate = false, ProgressPercent = progressPercent }),
+                DownloadState.Downloading => (message, MessageState.Info, new ProgressState { IsIndeterminate = isIndeterminate, ProgressPercent = progressPercent }),
                 DownloadState.AlreadyDownloaded => ("AlreadyDownloaded".ToLocalized(message), MessageState.Warning, null),
                 DownloadState.Finished => ("Downloaded".ToLocalized(message), MessageState.Success, null),
                 DownloadState.Cancelled => ("Cancelled".ToLocalized(), MessageState.Error, null),

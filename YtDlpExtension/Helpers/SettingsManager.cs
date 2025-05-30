@@ -7,9 +7,14 @@ namespace YtDlpExtension.Helpers
     {
         private readonly TextSetting _downloadLocation = new("downloadLocation", DownloadHelper.GetDefaultDownloadPath())
         {
-            Label = "Download Directory",
-            Description = "Download Directory"
+            Label = "DownloadDirectory".ToLocalized(),
+            Description = "DownloadDirectory".ToLocalized()
         };
+        private readonly ToggleSetting _recodeVideo = new("recodeVideo", false)
+        {
+            Description = "Always recode video (Increases time but ensures compatibility)"
+        };
+
         private readonly ChoiceSetSetting _videoOutputFormats = new("videoOutputFormats", [
             new ChoiceSetSetting.Choice("mp4", "mp4"),
             new ChoiceSetSetting.Choice("mkv", "mkv"),
@@ -21,8 +26,8 @@ namespace YtDlpExtension.Helpers
             new ChoiceSetSetting.Choice("ts", "ts"),
         ])
         {
-            Label = "Video Output Format",
-            Description = "Video Output Format",
+            Label = "VideoOutputFormat".ToLocalized(),
+            Description = "VideoOutputFormat".ToLocalized(),
             Value = "mp4"
         };
 
@@ -37,14 +42,21 @@ namespace YtDlpExtension.Helpers
             new ChoiceSetSetting.Choice("wav", "wav"),
         ])
         {
-            Label = "Audio Only Output Format",
-            Description = "Audio Only Output Format",
+            Label = "AudioOutputFormat".ToLocalized(),
+            Description = "AudioOutputFormat".ToLocalized(),
             Value = "mp3"
+        };
+
+        private readonly TextSetting _customFormatSelector = new("customFormatSelector", string.Empty)
+        {
+            Label = "CustomFormatSelector".ToLocalized(),
+            Description = "CustomFormatSelector".ToLocalized()
         };
 
         public string DownloadLocation => _downloadLocation.Value ?? DownloadHelper.GetDefaultDownloadPath();
         public string GetSelectedVideoOutputFormat => _videoOutputFormats.Value ?? "mp4";
         public string GetSelectedAudioOutputFormat => _audioOutputFormats.Value ?? "mp3";
+        public string GetCustomFormatSelector => _customFormatSelector.Value ?? string.Empty;
         internal static string SettingsJsonPath()
         {
             var directory = Utilities.BaseSettingsPath("YtDlp");
@@ -58,13 +70,14 @@ namespace YtDlpExtension.Helpers
             Settings.Add(_downloadLocation);
             Settings.Add(_videoOutputFormats);
             Settings.Add(_audioOutputFormats);
+            Settings.Add(_customFormatSelector);
             try
             {
                 LoadSettings();
             }
             catch (FileNotFoundException)
             {
-                SaveSettings(); // cria o arquivo com os valores padrões
+                SaveSettings();
             }
 
             Settings.SettingsChanged += (s, a) => this.SaveSettings();

@@ -21,12 +21,21 @@ public partial class YtDlpExtensionCommandsProvider : CommandProvider
 
         DisplayName = "Video Downloader";
         Settings = _settings.Settings;
+        var settingsPage = _settings.Settings.SettingsPage;
         Icon = _logoIcon;
         _commands = [
             new CommandItem(new YtDlpExtensionPage(_settings, _ytDlp))
             {
                 Title = DisplayName,
                 Icon = _logoIcon,
+                MoreCommands =
+                [
+                    new CommandContextItem(settingsPage)
+                    {
+                        Title = "Settings".ToLocalized(),
+                        Subtitle = "Configure the video downloader settings"
+                    },
+                ],
             },
         ];
     }
