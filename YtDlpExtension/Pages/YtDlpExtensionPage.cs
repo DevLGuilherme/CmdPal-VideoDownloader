@@ -273,7 +273,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         var playlistCount = playlistDetails["playlistCount"]?.ToString() ?? string.Empty;
                         playlistData.Add("playlistTitle", playlistTitle);
                         playlistData.Add("downloadPath", Path.Combine(_settingsManager.DownloadLocation, playlistTitle));
-                        playlistData.Add("playlistCount", "playlistCount".ToLocalized(playlistCount ?? "0"));
+                        playlistData.Add("playlistCount", playlistCount);
                         // The command to go to the playlist form is declared here
                         // in order to update the command once the download starts
                         Command goToPlaylistDownloadForm = new NoOpCommand();
@@ -317,13 +317,54 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
                 }
 
+                CommandContextItem? listSubtitlesCommand = null;
+                CommandContextItem? listAutoCaptionsCommand = null;
+
+                if (videoData.Subtitles?.Count > 0)
+                {
+                    listSubtitlesCommand = new CommandContextItem(
+                        new SubtitlesPage(queryURL, videoData.Subtitles, false, _ytDlp, _settingsManager))
+                    {
+                        Icon = new IconInfo("\uf15f"),
+                        Title = "ListSubtitles".ToLocalized(),
+                    };
+                }
+                if (videoData.AutomaticCaptions?.Count > 0)
+                {
+                    listAutoCaptionsCommand = new CommandContextItem(
+                        new SubtitlesPage(queryURL, videoData.AutomaticCaptions, true, _ytDlp, _settingsManager))
+                    {
+                        Icon = new IconInfo("\ued0c"),
+                        Title = "ListAutoCaptions".ToLocalized(),
+                    };
+                }
+
                 foreach (var format in formatsOrdered)
                 {
                     var formatObject = format;
 
                     if (formatObject != null)
                     {
-                        _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, formatObject, _ytDlp, _settingsManager));
+                        var formatListItem = new VideoFormatListItem(queryURL, videoTitle, thumbnail, formatObject, _ytDlp, _settingsManager);
+                        var moreCommands = formatListItem.MoreCommands.ToList();
+
+                        var trimVideoForm = new TrimVideoFormPage(queryURL, _settingsManager, videoData, format, _ytDlp);
+                        var trimVideoCommand = new CommandContextItem(trimVideoForm)
+                        {
+                            Icon = new IconInfo("\ue8c6"),
+                            Title = "TrimVideo".ToLocalized(),
+                        };
+                        moreCommands.Add(trimVideoCommand);
+
+                        if (listSubtitlesCommand != null)
+                            moreCommands.Add(listSubtitlesCommand);
+
+                        if (listAutoCaptionsCommand != null)
+                            moreCommands.Add(listAutoCaptionsCommand);
+
+                        formatListItem.MoreCommands = moreCommands.ToArray();
+
+                        _itens.Add(formatListItem);
                     }
                 }
                 _fallbackItems = _itens.ToList();
