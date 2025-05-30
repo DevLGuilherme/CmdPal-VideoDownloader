@@ -22,7 +22,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
@@ -45,7 +45,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
@@ -66,7 +66,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
@@ -88,7 +88,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
@@ -110,7 +110,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
@@ -131,7 +131,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
@@ -151,7 +151,7 @@ namespace YtDlpExtension.Test
                 videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
                 if (videoData == null)
                 {
-                    Assert.True(false, "Video data is null.");
+                    Assert.Fail("Video data is null.");
                     return;
                 }
                 Assert.False(string.IsNullOrEmpty(videoData?.Title));
