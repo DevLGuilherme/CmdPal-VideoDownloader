@@ -13,6 +13,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.UI.ViewManagement;
 using YtDlpExtension.Helpers;
 using YtDlpExtension.Metada;
 using YtDlpExtension.Pages;
@@ -23,9 +24,13 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 {
     private List<VideoFormatListItem> _itens = new();
     private List<VideoFormatListItem> _fallbackItems = new();
+    private List<VideoFormatListItem> _itemsToMerge = new();
     private DownloadHelper _ytDlp;
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
     private readonly SettingsManager _settingsManager;
+    private string _currentUrl;
+    private CancellationTokenSource? _debounceCts;
+    private string _lastSearch = string.Empty;
 
     public List<VideoFormatListItem> GetActiveDownloads()
     {
@@ -70,134 +75,187 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     public override async void UpdateSearchText(string oldSearch, string newSearch)
     {
-        if (oldSearch == newSearch)
-            return;
 
-        var oldAudioOnly = oldSearch is { Length: > 0 } oldQuery && oldQuery.StartsWith('@');
-        var newAudioOnly = newSearch is { Length: > 0 } newQuery && newQuery.StartsWith('@');
-
-        var oldTrimmed = oldSearch.TrimStart('@');
-        var newTrimmed = newSearch.TrimStart('@');
-
-        if (_fallbackItems == null || _fallbackItems.Count == 0)
+        try
         {
-            // First Search or empty list — do a full search
+            if (_lastSearch == newSearch)
+                return;
+
+            _lastSearch = newSearch;
+
+            if (oldSearch == newSearch)
+                return;
+
+            var trimmedSearch = newSearch.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedSearch))
+            {
+                await ApplyLocalFormatFilterAsync(null);
+                return;
+            }
+
+            if (_settingsManager.GetDownloadOnPaste && !string.IsNullOrEmpty(_settingsManager.GetCustomFormatSelector))
+            {
+                var downloadBanner = new StatusMessage();
+                _ = _ytDlp.TryExecuteDownloadAsync(trimmedSearch, downloadBanner);
+                return;
+            }
+
+            var isValidFormatId = Regex.IsMatch(trimmedSearch, @"^([\w.\-]+)([+][\w.\-]+)*$");
+
+            if (isValidFormatId)
+            {
+                await ApplyLocalFormatFilterAsync(trimmedSearch);
+                return;
+            }
+
             await UpdateListAsync(newSearch);
-            return;
         }
-
-        var quickMergeRegex = new Regex(@"^([\w\-]+)(?:\+([\w\-]+))?@(.+)$");
-
-        var match = quickMergeRegex.Match(newSearch);
-        if (match.Success)
+        catch
         {
-            var videoFormat = match.Groups[1].Value;
-            var audioFormat = match.Groups[2].Value;
-            var url = match.Groups[3].Value;
-
-            ApplyLocalFormatFilter(videoFormat, audioFormat);
-            return;
+            //IGNORED
         }
-
-        if (oldAudioOnly != newAudioOnly && (newTrimmed == oldTrimmed || newTrimmed == ""))
-        {
-            // If an @ is typed or removed at the start of the string but the url remains the same
-            ApplyLocalFilter(newAudioOnly);
-            return;
-        }
-
-        if (newAudioOnly && newTrimmed == oldTrimmed)
-        {
-            // If the base text remains the same, apply local filter
-            ApplyLocalFilter(true);
-            return;
-        }
-
-
-
-        // If the url is completely different then do a new search
-        await UpdateListAsync(newSearch);
     }
 
-    private void ApplyLocalFilter(bool audioOnly)
+    private async Task ApplyLocalFormatFilterAsync(string? formatsSearch)
     {
-        if (audioOnly)
+        try
         {
-            _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
-        }
-        else
-        {
-            _itens = _fallbackItems.ToList();
-        }
-        RaiseItemsChanged(_itens.Count);
-    }
+            var sourceItems = new List<VideoFormatListItem>(_fallbackItems);
+            _itens.Clear();
 
-    private void ApplyLocalFormatFilter(string videoFormat, string audioFormat)
-    {
-        List<VideoFormatListItem> FilterFormatCandidates(string format, bool audioOnly)
-        {
-            var candidates = _fallbackItems
-                .Where(item => (audioOnly ? item.Title == "audio only" : item.Title != "audio only") &&
-                               item.Tags.Any(tag => tag.Text.Contains(format, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-
-            // Se houver exatamente 2 candidatos e um deles for exato, retorna só o exato
-            if (candidates.Count == 2)
+            if (string.IsNullOrWhiteSpace(formatsSearch))
             {
-                var exact = candidates.FirstOrDefault(item =>
-                    item.Tags.Any(tag => tag.Text.Equals(format, StringComparison.OrdinalIgnoreCase)));
-                if (exact != null)
-                    return new List<VideoFormatListItem> { exact };
+                _itens.AddRange(sourceItems);
+                RaiseItemsChanged(_itens.Count);
+                return;
             }
 
-            return candidates;
-        }
-
-        if (string.IsNullOrEmpty(audioFormat))
-        {
-            var videoCandidates = FilterFormatCandidates(videoFormat, audioOnly: false);
-            var audioCandidates = _fallbackItems
-                .Where(item => item.Title == "audio only")
-                .ToList();
-            _itens = videoCandidates.Concat(audioCandidates).ToList();
-        }
-        else
-        {
-            var videoCandidates = FilterFormatCandidates(videoFormat, audioOnly: false);
-            var audioCandidates = FilterFormatCandidates(audioFormat, audioOnly: true);
-
-            var result = new List<VideoFormatListItem>();
-            if (videoCandidates.Count > 0)
-                result.AddRange(videoCandidates);
-            if (audioCandidates.Count > 0)
-                result.AddRange(audioCandidates);
-            _itens = result;
-        }
-        IContextItem[] _fallbackcommands;
-        if (_itens.Count > 0 && _itens.Count <= 2)
-        {
-            foreach (var item in _itens)
+            var formatParts = formatsSearch.Split("+", StringSplitOptions.TrimEntries).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+            if (formatParts.Length == 0 || formatParts.Length > 2)
             {
-                _fallbackcommands = item.MoreCommands;
-                var commands = _fallbackcommands.ToList();
-                commands.Insert(0, new CommandContextItem(
-                    "QuickMerge",
-                    "QuickMerge",
-                    "QuickMerge",
-                    action: null,
-                    result: CommandResult.KeepOpen()
-                )
+                _itens.AddRange(sourceItems);
+                RaiseItemsChanged(_itens.Count);
+                return;
+            }
+
+            var firstFormat = formatParts[0];
+            var videoFormats = sourceItems
+                .Where(FormatHelper.IsVideo)
+                .Where(item => item.Tags.Any(tag => tag.Text.StartsWith(firstFormat, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            var audioFormats = sourceItems
+                .Where(FormatHelper.IsAudio)
+                .Where(item => item.Title.Contains("audio", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (formatParts.Length > 1)
+            {
+                var lastFormat = formatParts[1];
+
+                if (!string.IsNullOrWhiteSpace(lastFormat))
                 {
-                    RequestedShortcut = KeyChordHelpers.FromModifiers(true, false, false, false, Windows.System.VirtualKey.M, 0),
-                    Icon = new IconInfo("\uE71B"),
-                });
-                item.MoreCommands = commands.ToArray();
-            }
-            RaiseItemsChanged(2);
-        }
-        RaiseItemsChanged(_itens.Count);
-    }
+                    audioFormats = audioFormats
+                        .Where(item => item.Tags.Any(tag => tag.Text.StartsWith(lastFormat, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
 
+                    var exactMatch = audioFormats
+                        .Where(item => item.Tags.Any(tag => tag.Text.Equals(lastFormat, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    if (exactMatch.Count == 1)
+                    {
+                        audioFormats = exactMatch;
+                    }
+                }
+                else
+                {
+                    audioFormats.Clear();
+                }
+            }
+
+            // Special Case: exactly one video and one audio format
+            if (videoFormats.Count == 1 && audioFormats.Count == 1)
+            {
+                var selectedVideo = videoFormats[0];
+                var selectedAudio = audioFormats[0];
+                var quickMergeList = new List<VideoFormatListItem>
+                {
+                    selectedVideo,
+                    selectedAudio
+                };
+
+                var videoFormatId = selectedVideo.Tags.FirstOrDefault()?.Text;
+                var audioFormatId = selectedAudio.Tags.FirstOrDefault()?.Text;
+                Title = $"{videoFormatId?.ToString()}+{audioFormatId?.ToString()}";
+                if (!string.IsNullOrWhiteSpace(videoFormatId) && !string.IsNullOrWhiteSpace(audioFormatId))
+                {
+                    foreach (var item in quickMergeList)
+                    {
+                        var commands = item.MoreCommands?.ToList() ?? new List<IContextItem>();
+                        var cancellationToken = new CancellationTokenSource();
+                        Command quickMergeCommand = new AnonymousCommand(() => { });
+
+                        var cancelDownloadCommand = new AnonymousCommand(() =>
+                        {
+                            cancellationToken.Cancel();
+                            item.Command = quickMergeCommand;
+                        })
+                        {
+                            Name = "CancelDownload".ToLocalized(),
+                            Icon = new IconInfo("\uE711"),
+                            Result = CommandResult.KeepOpen(),
+                        };
+                        var downloadBanner = new StatusMessage();
+                        quickMergeCommand = new AnonymousCommand
+                        (
+                          async () =>
+                          {
+                              item.Command = cancelDownloadCommand;
+                              await _ytDlp.TryExecuteDownloadAsync(
+                                        item.VideoUrl,
+                                        downloadBanner,
+                                        item.Details?.Title ?? "MissingTitle".ToLocalized(),
+                                        videoFormatId,
+                                        audioFormatId: audioFormatId,
+                                        cancellationToken: cancellationToken.Token
+                                    );
+                          }
+                        )
+                        {
+                            Name = "QuickMerge",
+                            Result = CommandResult.KeepOpen()
+                        };
+
+
+
+                        item.Command = quickMergeCommand;
+                    }
+                }
+                _itens.Clear();
+                _itens.AddRange(quickMergeList);
+                RaiseItemsChanged(_itens.Count);
+                return;
+            }
+            else
+            {
+                _itens.Clear();
+                _itens.AddRange(videoFormats);
+                _itens.AddRange(audioFormats);
+                RaiseItemsChanged(_itens.Count);
+                return;
+            }
+
+        }
+        catch (Exception ex)
+        {
+            // Resets the list in case of error
+            _itens.Clear();
+            _itens.AddRange(_fallbackItems);
+            RaiseItemsChanged(_itens.Count);
+        }
+    }
 
     private async Task UpdateListAsync(string queryText)
     {
@@ -255,10 +313,8 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         ["thumbnail"] = thumbnail,
                         ["videoURL"] = queryURL
                     };
-                    //Title = "FetchingPlaylistTitle".ToLocalized();
-                    //_ytDlp._downloadBanner.UpdateState(DownloadState.CustomMessage, "FetchingPlaylistTitle".ToLocalized(), true);
-                    //_ytDlp._downloadBanner.ShowStatus();
                     IsLoading = true;
+
                     //The form page will be set after the data from the playlist is fetched
                     var listItem = new VideoFormatListItem(new NoOpCommand())
                     {
@@ -369,6 +425,36 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         if (listAutoCaptionsCommand != null)
                             moreCommands.Add(listAutoCaptionsCommand);
 
+                        //var selectToMergeCommand = new CommandContextItem("Select");
+                        var selectToMergeCommand = CommandsHelper.CreateCyclicCommand(
+                            "Select",
+                            () =>
+                            {
+                                _itemsToMerge.Add(formatListItem);
+
+                                var tags = formatListItem.Tags.ToList();
+                                tags.Add(new Tag("Selected")
+                                {
+                                    Background = new OptionalColor(true, new Color(accentColor.R, accentColor.G, accentColor.B, accentColor.A)),
+                                    Foreground = new OptionalColor(true, new Color(foregroundColor.R, foregroundColor.G, foregroundColor.B, foregroundColor.A))
+                                });
+                                formatListItem.Tags = tags.ToArray();
+                            },
+                            "Unselect",
+                            () =>
+                            {
+                                _itemsToMerge.Remove(formatListItem);
+
+                                var tags = formatListItem.Tags.ToList();
+                                tags.RemoveAll(t => t.Text == "Selected");
+                                formatListItem.Tags = tags.ToArray();
+                            },
+                            new IconInfo("\ue710"),
+                            new IconInfo("\ue711")
+                        );
+
+                        moreCommands.Add(selectToMergeCommand);
+
                         formatListItem.MoreCommands = moreCommands.ToArray();
 
                         _itens.Add(formatListItem);
@@ -404,21 +490,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         RaiseItemsChanged(_itens.Count);
     }
 
-    private static JToken[]? FilterAudioOnlyFormats(JArray? formats)
-    {
-        return formats?.Where(
-                        f =>
-                            f?["vcodec"]?.ToString() == "none" &&
-                            f?["resolution"]?.ToString() == "audio only"
-                        ).ToArray();
-    }
 
-    private static Format[] OrderByResolution(Format[]? formats)
-    {
-        return formats?
-            .OrderByDescending(format => format.height)
-            .ToArray() ?? [];
-    }
 
     private void HandleError(string message)
     {
