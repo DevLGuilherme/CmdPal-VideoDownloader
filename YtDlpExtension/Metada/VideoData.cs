@@ -220,7 +220,9 @@ namespace YtDlpExtension.Metada
         [JsonConverter(typeof(FlexibleLongConverter))]
         public long? filesize_approx { get; set; }
         [JsonPropertyName("width")]
-        public object? width { get; set; }
+        [JsonConverter(typeof(FlexibleIntConverter))]
+
+        public int? width { get; set; }
         [JsonPropertyName("language")]
         public object? language { get; set; }
         [JsonPropertyName("language_preference")]
@@ -335,7 +337,9 @@ namespace YtDlpExtension.Metada
         [JsonPropertyName("url")]
         public string? url { get; set; }
         [JsonPropertyName("width")]
-        public object? width { get; set; }
+        [JsonConverter(typeof(FlexibleIntConverter))]
+
+        public int? width { get; set; }
         [JsonPropertyName("language")]
         public object? language { get; set; }
         [JsonPropertyName("language_preference")]

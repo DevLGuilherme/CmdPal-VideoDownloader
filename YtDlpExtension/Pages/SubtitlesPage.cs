@@ -63,7 +63,7 @@ namespace YtDlpExtension.Pages
                 return Array.Empty<IListItem>();
             }
 
-            if (_items.Count == _subtitles.Count) // já está pronta
+            if (_items.Count == _subtitles.Count)
                 return _items.ToArray();
 
             _items.Clear();
@@ -90,9 +90,3 @@ namespace YtDlpExtension.Pages
         }
     }
 }
-//new AnonymousCommand(async () =>
-//{
-//    var downloadBanner = new StatusMessage();
-//    await _ytDlp.TryExecuteSubtitleDownloadAsync(_videoUrl, subtitle.Key, downloadBanner, _settings.DownloadLocation);
-//})
-//{ Name = "Download".ToLocalized() }

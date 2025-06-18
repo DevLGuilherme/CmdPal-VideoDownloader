@@ -234,9 +234,11 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 //Get Video Title
                 string videoTitle = videoData?.Title ?? "MissingTitle".ToLocalized();
                 //Order formats by resolution, from highest to lowest
-                var formatsOrdered = OrderByResolution(videoData?.Formats);
+                var formatsOrdered = _settingsManager.GetSelectedMode == "simple" ?
+                                        FormatHelper.OrderByResolutionDistinct(videoData?.Formats) :
+                                        FormatHelper.OrderByResolution(videoData?.Formats);
                 string thumbnail = videoData?.Thumbnail ?? "MissingThumb".ToLocalized();
-                if (videoData?.Formats == null)
+                if (videoData?.Formats == null && videoData != null)
                 {
                     JObject videoInfo = JObject.Parse(jsonOutput);
                     _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, videoData, _ytDlp, _settingsManager));
@@ -320,7 +322,8 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 CommandContextItem? listSubtitlesCommand = null;
                 CommandContextItem? listAutoCaptionsCommand = null;
 
-                if (videoData.Subtitles?.Count > 0)
+
+                if (videoData?.Subtitles?.Count > 0)
                 {
                     listSubtitlesCommand = new CommandContextItem(
                         new SubtitlesPage(queryURL, videoData.Subtitles, false, _ytDlp, _settingsManager))
@@ -329,7 +332,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         Title = "ListSubtitles".ToLocalized(),
                     };
                 }
-                if (videoData.AutomaticCaptions?.Count > 0)
+                if (videoData?.AutomaticCaptions?.Count > 0)
                 {
                     listAutoCaptionsCommand = new CommandContextItem(
                         new SubtitlesPage(queryURL, videoData.AutomaticCaptions, true, _ytDlp, _settingsManager))
@@ -338,6 +341,10 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                         Title = "ListAutoCaptions".ToLocalized(),
                     };
                 }
+
+                var uiSettings = new UISettings();
+                var accentColor = uiSettings.GetColorValue(UIColorType.AccentDark2);
+                var foregroundColor = uiSettings.GetColorValue(UIColorType.Foreground);
 
                 foreach (var format in formatsOrdered)
                 {

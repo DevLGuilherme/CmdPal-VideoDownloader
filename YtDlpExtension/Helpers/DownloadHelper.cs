@@ -156,6 +156,7 @@ namespace YtDlpExtension.Helpers
                 if (downloadProcess.ExitCode > 0)
                 {
                     SetTitle("Error".ToLocalized());
+                    downloadBanner.UpdateState(DownloadState.Error, "EmptyDataYtDlp".ToLocalized());
                 }
             }
             catch (OperationCanceledException)
@@ -329,8 +330,8 @@ namespace YtDlpExtension.Helpers
         public async Task<string> TryExecuteDownloadAsync(
             string url,
             StatusMessage downloadBanner,
-            string videoTitle,
-            string videoFormatId,
+            string videoTitle = "",
+            string videoFormatId = "",
             string startTime = "",
             string endTime = "",
             string audioFormatId = "bestaudio",
@@ -370,9 +371,13 @@ namespace YtDlpExtension.Helpers
                 {
                     arguments.Add($"\"{customFormatSelector}\"");
                 }
+                else if (_settings.GetSelectedMode == "simple")
+                {
+                    arguments.Add($"\"{videoFormatId}+bestaudio[acodec!=opus]/{videoFormatId}+ba/{videoFormatId}/best\"");
+                }
                 else
                 {
-                    arguments.Add($"\"{videoFormatId}+{audioFormatId}[acodec!=opus]/{videoFormatId}+ba/{videoFormatId}/best\"");
+                    arguments.Add($"\"{videoFormatId}+{audioFormatId}/best\"");
                 }
                 arguments.Add("--merge-output-format");
                 arguments.Add(GetSettingsVideoOutputFormat());

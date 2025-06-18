@@ -3,13 +3,12 @@ using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Windows.UI.ViewManagement;
 using YtDlpExtension.Helpers;
 using YtDlpExtension.Metada;
 namespace YtDlpExtension.Pages
 {
-    public sealed partial class VideoFormatListItem : ListItem, IDisposable
+    public sealed partial class VideoFormatListItem : ListItem, IDisposable, ICloneable
     {
 
         private readonly DownloadHelper _ytDlp;
@@ -17,25 +16,49 @@ namespace YtDlpExtension.Pages
         private readonly SettingsManager _settings;
         private StatusMessage _downloadBanner = new();
         private StatusMessage _downloadAudioOnlyBanner = new();
-
+        public string VideoUrl { get; }
+        private string _videoTitle;
+        private string _thumbnail;
+        private VideoData? _videoData;
         public DownloadState GetDownloadState => _downloadBanner.CurrentState();
 
-        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, Format videoFormatObject, DownloadHelper ytDlp, SettingsManager settings)
+
+        /// <summary>
+        /// This Constructor is used to create a video with a format list from yt-dlp.
+        /// </summary>
+        /// <param name="queryURL"></param>
+        /// <param name="videoTitle"></param>
+        /// <param name="thumbnail"></param>
+        /// <param name="videoFormatObject"></param>
+        /// <param name="ytDlp"></param>
+        /// <param name="settings"></param>
+        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, Format videoFormatObject, DownloadHelper ytDlp, SettingsManager settings, float? duration = 0)
         {
             var uiSettings = new UISettings();
             var accentColor = uiSettings.GetColorValue(UIColorType.Accent);
             var foregroundColor = uiSettings.GetColorValue(UIColorType.Foreground);
+            VideoUrl = queryURL;
             _ytDlp = ytDlp;
             _settings = settings;
+            _thumbnail = thumbnail;
+            _videoTitle = videoTitle;
             var formatId = videoFormatObject.format_id ?? "";
+            // var resolution = (_settings.GetSelectedMode == "simple" ? GetResolutionCategory(videoFormatObject.width, videoFormatObject.height) : videoFormatObject.resolution) ?? "";
             var resolution = videoFormatObject.resolution ?? "";
+            var resolutionCategory = GetResolutionCategory(videoFormatObject.width, videoFormatObject.height);
             var ext = videoFormatObject.ext ?? "";
-            List<Tag> _tags = [new Tag(formatId),
-                new Tag(ext) {
+
+            List<Tag> _tags = [];
+
+            if (_settings.GetSelectedMode == "advanced")
+            {
+                _tags.Add(new Tag(formatId));
+                _tags.Add(new Tag(ext)
+                {
                     Background = new OptionalColor(true, new Color(accentColor.R, accentColor.G, accentColor.B, accentColor.A)),
                     Foreground = new OptionalColor(true, new Color(foregroundColor.R, foregroundColor.G, foregroundColor.B, foregroundColor.A))
-                }
-            ];
+                });
+            }
 
             List<IContextItem> _commands = [];
 
@@ -52,7 +75,7 @@ namespace YtDlpExtension.Pages
             )
             { Icon = new IconInfo("\uec4f") };
 
-            audioOnlyContextItem.Command = CreateDownloadWithCancelCommand(
+            audioOnlyContextItem.Command = CommandsHelper.CreateDownloadWithCancelCommand(
                 async token => await _ytDlp.TryExecuteDownloadAsync(
                     queryURL,
                     _downloadAudioOnlyBanner,
@@ -66,7 +89,15 @@ namespace YtDlpExtension.Pages
             );
             _commands.Add(audioOnlyContextItem);
 
-            Title = resolution;
+            if (_settings.GetSelectedMode == "simple")
+            {
+                Title = resolutionCategory;
+            }
+            else
+            {
+                Title = resolution;
+            }
+
             Icon = new IconInfo("\uE896");
             Tags = _tags.ToArray();
             Details = BuildDetails(videoTitle, thumbnail, videoFormatObject);
@@ -137,13 +168,26 @@ namespace YtDlpExtension.Pages
             Command = command;
         }
 
+        /// <summary>
+        /// This Constructor handles the case where a video does not have a format list, but only a single format.
+        /// </summary>
+        /// <param name="queryURL"></param>
+        /// <param name="videoTitle"></param>
+        /// <param name="thumbnail"></param>
+        /// <param name="videoSingleFormat"></param>
+        /// <param name="ytDlp"></param>
+        /// <param name="settings"></param>
         public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, VideoData videoSingleFormat, DownloadHelper ytDlp, SettingsManager settings, bool isBestFormat = false)
         {
             var uiSettings = new UISettings();
             var accentColor = uiSettings.GetColorValue(UIColorType.Accent);
             var foregroundColor = uiSettings.GetColorValue(UIColorType.Foreground);
+            VideoUrl = queryURL;
+            _videoData = videoSingleFormat;
             _ytDlp = ytDlp;
             _settings = settings;
+            _videoTitle = videoTitle;
+            _thumbnail = thumbnail;
             var formatId = videoSingleFormat.FormatID ?? "";
             var resolution = videoSingleFormat.resolution ?? "";
             var ext = videoSingleFormat.Extension ?? "";
@@ -171,7 +215,7 @@ namespace YtDlpExtension.Pages
             )
             { Icon = new IconInfo("\uec4f") };
 
-            audioOnlyContextItem.Command = CreateDownloadWithCancelCommand(
+            audioOnlyContextItem.Command = CommandsHelper.CreateDownloadWithCancelCommand(
                 async token => await _ytDlp.TryExecuteDownloadAsync(
                     queryURL,
                     _downloadAudioOnlyBanner,
@@ -250,6 +294,33 @@ namespace YtDlpExtension.Pages
             Command = startDownloadCommand;
 
 
+        }
+
+        public static string GetResolutionCategory(int? width, int? height)
+        {
+            return width switch
+            {
+                >= 3840 => "2160p (4K)",
+                >= 2560 => "1440p (2K)",
+                >= 1920 => "1080p",
+                >= 1280 => "720p",
+                >= 854 => "480p",
+                >= 640 => "360p",
+                >= 426 => "240p",
+                >= 256 => "144p",
+                _ => $"{width}x{height}"
+            };
+        }
+
+        public static long? EstimateFilesize(double? tbr, double? durationSeconds)
+        {
+            if (tbr.HasValue && durationSeconds.HasValue)
+            {
+                double sizeInBytes = (tbr.Value * 1000 / 8) * durationSeconds.Value;
+                return (long)Math.Round(sizeInBytes);
+            }
+
+            return null;
         }
 
         private Details? BuildDetails(string videoTitle, string thumbnail, VideoData videoFormatObject)
@@ -348,86 +419,15 @@ namespace YtDlpExtension.Pages
         }
 
 
-        /// <summary>
-        /// This method is responsible to create a cyclic interaction of commands
-        /// <example>
-        /// <code>
-        /// Donwload -> Cancel -> Download -> ...
-        /// </code>
-        /// </example>
-        /// </summary>
-        public static ICommand CreateDownloadWithCancelCommand(
-            Func<CancellationToken, Task> downloadFunc,
-            string commandDownloadName,
-            string commandCancelName
-        )
-        {
-            var cancellationToken = new CancellationTokenSource();
-            Action execute = () => { };
-
-            var command = new AnonymousCommand(() => execute())
-            {
-                Name = commandDownloadName,
-                Result = CommandResult.KeepOpen()
-            };
-
-            void SetDownloadCommand()
-            {
-                command.Name = commandDownloadName;
-                execute = () =>
-                {
-                    _ = ExecuteDownload();
-                    SetCancelCommand();
-                };
-            }
-
-            void SetCancelCommand()
-            {
-                command.Name = commandCancelName;
-                execute = () =>
-                {
-                    command.Result = CommandResult.Confirm(new ConfirmationArgs()
-                    {
-                        Title = "CancelDownload".ToLocalized(),
-                        Description = "CancelDialogDescription".ToLocalized(),
-                        IsPrimaryCommandCritical = true,
-                        PrimaryCommand = new AnonymousCommand(() =>
-                        {
-                            cancellationToken.Cancel();
-                            cancellationToken = new CancellationTokenSource();
-                            SetDownloadCommand();
-                        })
-                        {
-                            Name = "Confirm".ToLocalized(),
-                            Result = CommandResult.KeepOpen(),
-                        }
-                    });
-                };
-
-            }
-
-            async Task ExecuteDownload()
-            {
-                SetCancelCommand();
-                try
-                {
-                    await downloadFunc(cancellationToken.Token);
-                }
-                finally
-                {
-                    SetDownloadCommand();
-                }
-            }
-
-
-            SetDownloadCommand();
-
-            return command;
-        }
-
         public void Dispose()
         {
-            throw new NotImplementedException();
+            ((IDisposable)_token).Dispose();
+        }
+
+        public object Clone()
+        {
+            var clonnedVideoItem = new VideoFormatListItem(VideoUrl, _videoTitle, _thumbnail, _videoData, _ytDlp, _settings);
+            return clonnedVideoItem;
         }
     }
 }

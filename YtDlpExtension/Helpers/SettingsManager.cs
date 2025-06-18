@@ -8,11 +8,24 @@ namespace YtDlpExtension.Helpers
         private readonly TextSetting _downloadLocation = new("downloadLocation", DownloadHelper.GetDefaultDownloadPath())
         {
             Label = "DownloadDirectory".ToLocalized(),
-            Description = "DownloadDirectory".ToLocalized()
+            Description = "DownloadDirectory".ToLocalized(),
+            IsRequired = true,
         };
         private readonly ToggleSetting _recodeVideo = new("recodeVideo", false)
         {
             Description = "Always recode video (Increases time but ensures compatibility)"
+        };
+
+
+        private readonly ChoiceSetSetting _mode = new("mode", [
+                new ChoiceSetSetting.Choice("Simple", "simple"),
+                new ChoiceSetSetting.Choice("Advanced", "advanced"),
+            ])
+        {
+            Value = "simple",
+            Description = "Simple: Prefer compatibility instead of quality (default)\nAdvanced: Prefer maximum quality and disable codec filtering",
+            IsRequired = true,
+            Label = "Download Mode"
         };
 
         private readonly ChoiceSetSetting _videoOutputFormats = new("videoOutputFormats", [
@@ -28,6 +41,7 @@ namespace YtDlpExtension.Helpers
         {
             Label = "VideoOutputFormat".ToLocalized(),
             Description = "VideoOutputFormat".ToLocalized(),
+            IsRequired = true,
             Value = "mp4"
         };
 
@@ -44,18 +58,30 @@ namespace YtDlpExtension.Helpers
         {
             Label = "AudioOutputFormat".ToLocalized(),
             Description = "AudioOutputFormat".ToLocalized(),
+            IsRequired = true,
             Value = "mp3"
         };
 
         private readonly TextSetting _customFormatSelector = new("customFormatSelector", string.Empty)
         {
             Label = "CustomFormatSelector".ToLocalized(),
-            Description = "CustomFormatSelector".ToLocalized()
+            Description = "CustomFormatSelector".ToLocalized(),
+
         };
+
+        private readonly ToggleSetting _downloadOnPaste = new("downloadOnPaste", false)
+        {
+            Label = "Download on Paste",
+            Description = "Downloads the video on paste (Only when Custom Format Selector is set)",
+            ErrorMessage = "Custom Format Selector can't be empty"
+        };
+
 
         public string DownloadLocation => _downloadLocation.Value ?? DownloadHelper.GetDefaultDownloadPath();
         public string GetSelectedVideoOutputFormat => _videoOutputFormats.Value ?? "mp4";
         public string GetSelectedAudioOutputFormat => _audioOutputFormats.Value ?? "mp3";
+        public string GetSelectedMode => _mode.Value ?? "simple";
+        public bool GetDownloadOnPaste => _downloadOnPaste.Value;
         public string GetCustomFormatSelector => _customFormatSelector.Value ?? string.Empty;
         internal static string SettingsJsonPath()
         {
@@ -67,10 +93,12 @@ namespace YtDlpExtension.Helpers
         public SettingsManager()
         {
             FilePath = SettingsJsonPath();
+            Settings.Add(_mode);
             Settings.Add(_downloadLocation);
             Settings.Add(_videoOutputFormats);
             Settings.Add(_audioOutputFormats);
             Settings.Add(_customFormatSelector);
+            Settings.Add(_downloadOnPaste);
             try
             {
                 LoadSettings();

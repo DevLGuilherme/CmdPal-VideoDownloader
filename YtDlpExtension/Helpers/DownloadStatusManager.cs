@@ -14,7 +14,8 @@ namespace YtDlpExtension.Helpers
         AlreadyDownloaded,
         Finished,
         Cancelled,
-        CustomMessage
+        CustomMessage,
+        Error,
     }
 
     public static class DownloadStatusManager
@@ -49,6 +50,7 @@ namespace YtDlpExtension.Helpers
                 DownloadState.AlreadyDownloaded => ("AlreadyDownloaded".ToLocalized(message), MessageState.Warning, null),
                 DownloadState.Finished => ("Downloaded".ToLocalized(message), MessageState.Success, null),
                 DownloadState.Cancelled => ("Cancelled".ToLocalized(), MessageState.Error, null),
+                DownloadState.Error => ($"{"Error".ToLocalized()}: {message}", MessageState.Error, null),
                 _ => (message, MessageState.Info, new ProgressState { IsIndeterminate = isIndeterminate })
             };
 
