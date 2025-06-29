@@ -13,24 +13,34 @@ namespace YtDlpExtension.Pages
         private readonly SettingsManager _settings;
         private readonly JObject _jsonData;
         private readonly DownloadHelper _ytDlp;
+        private readonly Metada.VideoData _videoData;
         private readonly string _url;
+        private readonly StatusMessage _downloadBanner;
         private readonly Action<CancellationTokenSource> _onSubmit;
-        public PlaylistFormPage(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit)
+        private readonly Action<string> _onDownloadFinish;
+        public PlaylistFormPage(SettingsManager settings, Metada.VideoData videoData, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit, Action<string> onDownloadFinish, StatusMessage? downloadBanner = default)
         {
             _settings = settings;
             _jsonData = jsonData;
             _ytDlp = ytDlp;
-            _url = jsonData["videoURL"]?.ToString() ?? "";
+            _url = videoData.WebpageUrl!;
+            _onDownloadFinish = onDownloadFinish;
+            _downloadBanner = downloadBanner ?? new();
             _onSubmit = onSubmit;
+            _videoData = videoData;
+            Name = "Open";
+            Title = "Open";
+
         }
 
         public override IContent[] GetContent()
         {
-            var playlistTitle = _jsonData["playlistTitle"]?.ToString() ?? "";
+            //var playlistTitle = _jsonData["playlistTitle"]?.ToString() ?? "";
+            var playlistFormPage = new PlaylistFormContent(_settings, _jsonData, _ytDlp, _onSubmit, _onDownloadFinish);
             return [
                 new TreeContent
                 {
-                    RootContent = new PlaylistFormContent(_settings, _jsonData, _ytDlp, _onSubmit),
+                    RootContent = playlistFormPage,
                     Children = []
                 }
             ];
@@ -45,12 +55,16 @@ namespace YtDlpExtension.Pages
         private JObject _jsonData = new();
         private readonly DownloadHelper _ytDlp;
         private readonly Action<CancellationTokenSource> _onSubmit;
-        private readonly StatusMessage _playlistDownloadBanner = new();
-        public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit)
+        private readonly Action<string> _onDownloadFinish;
+        //private readonly StatusMessage _playlistDownloadBanner = new();
+        private readonly StatusMessage _playlistDownloadBanner;
+        public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit, Action<string> onDownloadFinish, StatusMessage? downloadBanner = default)
         {
             _settings = settings;
             _ytDlp = ytDlp;
             _onSubmit = onSubmit;
+            _onDownloadFinish = onDownloadFinish;
+            _playlistDownloadBanner = downloadBanner ?? new();
             var videoURL = jsonData["videoURL"]?.ToString();
             var title = jsonData["title"]?.ToString();
             var thumbnail = jsonData["thumbnail"]?.ToString();
@@ -71,7 +85,7 @@ namespace YtDlpExtension.Pages
                         {
                             "type": "TextBlock",
                             "id": "playlistTitle",
-                            "text": "Playlist: ${playlistTitle}",
+                            "text": "Playlist: {{_playlistTitle}}",
                             "wrap": true,
                             "weight": "Bolder",
                             "size": "Large"
@@ -93,7 +107,9 @@ namespace YtDlpExtension.Pages
                                         },
                                         {
                                             "type": "Image",
-                                            "url": "${thumbnail}"
+                                            "url": "{{thumbnail}}",
+                                            "height": "200px",
+                                            "horizontalAlignment": "Center"
                                         }
                                     ]
                                 },
@@ -291,7 +307,8 @@ namespace YtDlpExtension.Pages
                 playlistEnd,
                 customFormat,
                 audioOnly: audioOnly,
-                cancellationToken: token.Token
+                cancellationToken: token.Token,
+                onFinish: (_) => { _onDownloadFinish.Invoke(downloadPath); }
              );
             _onSubmit.Invoke(token);
             return CommandResult.GoBack();

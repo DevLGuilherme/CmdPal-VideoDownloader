@@ -24,6 +24,8 @@ namespace YtDlpExtension.Metada
         public Format[]? Formats { get; set; }
         [JsonPropertyName("url")]
         public string? Url { get; set; }
+        [JsonPropertyName("original_url")]
+        public string? OriginalUrl { get; set; }
         [JsonPropertyName("ext")]
         public string? Extension { get; set; }
         [JsonPropertyName("format")]
@@ -87,6 +89,9 @@ namespace YtDlpExtension.Metada
         public float? Duration { get; set; }
         [JsonPropertyName("view_count")]
         public long? ViewCount { get; set; }
+        [JsonPropertyName("playlist_count")]
+        public int? PlaylistCount { get; set; }
+
         [JsonPropertyName("concurrent_view_count")]
         public long? ConcurrentViewCount { get; set; }
         [JsonPropertyName("like_count")]

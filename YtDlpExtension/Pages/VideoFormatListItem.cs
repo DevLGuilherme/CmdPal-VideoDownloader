@@ -125,11 +125,15 @@ namespace YtDlpExtension.Pages
                 };
             };
 
-            var onDownloadFinished = () =>
+            Action<Command> onDownloadFinished = (openFileCommand) =>
             {
                 Icon = new IconInfo("\uE930");
                 Subtitle = "Downloaded".ToLocalized();
-                Command = startDownloadCommand;
+
+                if (openFileCommand != null)
+                {
+                    Command = openFileCommand;
+                }
             };
 
             var onAlreadyDownloaded = () =>
@@ -258,11 +262,12 @@ namespace YtDlpExtension.Pages
                 };
             };
 
-            var onDownloadFinished = () =>
+
+            Action<Command> onDownloadFinished = (_) =>
             {
                 Icon = new IconInfo("\uE930");
                 Subtitle = "Downloaded".ToLocalized();
-                Command = startDownloadCommand;
+
             };
 
             var onAlreadyDownloaded = () =>
@@ -274,7 +279,8 @@ namespace YtDlpExtension.Pages
 
             startDownloadCommand = new AnonymousCommand(async () =>
             {
-                await _ytDlp.TryExecuteDownloadAsync(
+                // Command to show the file in explorer after download finishes
+                var showFileInExplorer = await _ytDlp.TryExecuteDownloadAsync(
                         queryURL,
                         _downloadBanner,
                         videoTitle,

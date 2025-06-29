@@ -24,7 +24,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 {
     private List<VideoFormatListItem> _itens = new();
     private List<VideoFormatListItem> _fallbackItems = new();
-    private List<VideoFormatListItem> _itemsToMerge = new();
+    private List<VideoFormatListItem> _selectedItems = new();
     private DownloadHelper _ytDlp;
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
     private readonly SettingsManager _settingsManager;
@@ -228,8 +228,6 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                             Result = CommandResult.KeepOpen()
                         };
 
-
-
                         item.Command = quickMergeCommand;
                     }
                 }
@@ -260,245 +258,417 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private async Task UpdateListAsync(string queryText)
     {
         _itens.Clear();
-        var audioOnlyQuery = queryText.StartsWith("@", StringComparison.OrdinalIgnoreCase);
-        var queryURL = audioOnlyQuery ? queryText.Split("@")[1] : queryText;
-        if (!DownloadHelper.IsValidUrl(queryURL))
+        IsLoading = true;
+        if (!TryParseUrl(queryText, out var queryURL, out var audioOnlyQuery))
         {
             IsLoading = false;
             return;
         }
+        var isPlaylistURL = IsPlaylistUrl(queryURL);
 
-        IsLoading = true;
-        var isPlaylist = queryText.Contains("playlist") || queryText.Contains("list=");
-        var (jsonResult, bestformat) = await _ytDlp.TryExecuteQueryAsync(queryURL);
+        var (jsonResult, bestformat, error) = await _ytDlp.TryExecuteQueryAsync(queryURL);
 
-        if (string.IsNullOrEmpty(jsonResult))
+        if (error > 0)
         {
-            HandleError("EmptyDataYtDlp".ToLocalized());
+            var (title, message, icon) = GetError(error);
+            HandleError(title, message.ToLocalized(), icon);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(jsonResult))
+        {
+            HandleError("SomethingWrong".ToLocalized(), "EmptyDataYtDlp".ToLocalized());
             return;
         }
 
         try
         {
-            //JSON Cleaning
-            var jsonOutput = Regex.Replace(jsonResult, @"\""\s\""\s*:\s*""[^""]*"",?", "");
-            //JSON Parse
+            var (videoData, thumbnail, videoTitle) = ParseVideoData(jsonResult);
 
-            VideoData videoData;
-
-            try
+            if (videoData == null)
             {
-                videoData = System.Text.Json.JsonSerializer.Deserialize(jsonResult, VideoDataContext.Default.VideoData);
-                //Get Video Title
-                string videoTitle = videoData?.Title ?? "MissingTitle".ToLocalized();
-                //Order formats by resolution, from highest to lowest
-                var formatsOrdered = _settingsManager.GetSelectedMode == "simple" ?
-                                        FormatHelper.OrderByResolutionDistinct(videoData?.Formats) :
-                                        FormatHelper.OrderByResolution(videoData?.Formats);
-                string thumbnail = videoData?.Thumbnail ?? "MissingThumb".ToLocalized();
-                if (videoData?.Formats == null && videoData != null)
-                {
-                    JObject videoInfo = JObject.Parse(jsonOutput);
-                    _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, videoData, _ytDlp, _settingsManager));
-                    RaiseItemsChanged(1);
-                    return;
-                }
-
-
-                if (isPlaylist)
-                {
-                    var playlistData = new JObject()
-                    {
-                        ["title"] = videoTitle,
-                        ["thumbnail"] = thumbnail,
-                        ["videoURL"] = queryURL
-                    };
-                    IsLoading = true;
-
-                    //The form page will be set after the data from the playlist is fetched
-                    var listItem = new VideoFormatListItem(new NoOpCommand())
-                    {
-                        Tags = [new Tag("Playlist")],
-                        Icon = new IconInfo("\uE895"),
-                        Title = "FetchingPlaylistTitle".ToLocalized(),
-                        Subtitle = "FetchingPlaylistDescription".ToLocalized()
-                    };
-                    _itens.Insert(0, listItem);
-                    RaiseItemsChanged(1);
-                    _ = _ytDlp.ExtractPlaylistDataAsync(queryURL, onFinish: (playlistDetails) =>
-                    {
-                        var playlistTitle = playlistDetails["playlistTitle"]?.ToString() ?? string.Empty;
-                        var playlistCount = playlistDetails["playlistCount"]?.ToString() ?? string.Empty;
-                        playlistData.Add("playlistTitle", playlistTitle);
-                        playlistData.Add("downloadPath", Path.Combine(_settingsManager.DownloadLocation, playlistTitle));
-                        playlistData.Add("playlistCount", playlistCount);
-                        // The command to go to the playlist form is declared here
-                        // in order to update the command once the download starts
-                        Command goToPlaylistDownloadForm = new NoOpCommand();
-
-                        // This callback will be invoked once the download starts
-                        // And will update the command to cancel the playlist download
-                        Action<CancellationTokenSource> onSubmitForm = (cancellationToken) =>
-                        {
-                            listItem.Command = new AnonymousCommand(() =>
-                            {
-                                // Once the download is cancelled
-                                // The previous command should take place of the cancel command 
-                                // The form needs to be available again
-                                cancellationToken.Cancel();
-                                listItem.Command = goToPlaylistDownloadForm;
-                                listItem.Title = "PlaylistFetchedTitle".ToLocalized();
-                                listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
-                                listItem.Icon = new IconInfo("\uE90B");
-                            })
-                            {
-                                Name = "CancelDownload".ToLocalized(),
-                                Icon = new IconInfo("\uE711"),
-                                Result = CommandResult.KeepOpen()
-                            };
-                        };
-
-                        // The actual form is constructed here passing the callback declared previously
-                        /// This is currently needed because <see cref="CommandResult.GoToPage"/>  is not implemented yet
-                        // Needs future refactoring
-                        goToPlaylistDownloadForm = new PlaylistFormPage(_settingsManager, playlistData, _ytDlp, onSubmit: onSubmitForm);
-
-                        listItem.Command = goToPlaylistDownloadForm;
-                        listItem.Title = "PlaylistFetchedTitle".ToLocalized();
-                        listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
-                        listItem.Icon = new IconInfo("\uE90B");
-                        //Title = "PlaylistFetchedTitle".ToLocalized();
-                        RaiseItemsChanged(1);
-                        //_ytDlp._downloadBanner.Hide();
-                    });
-
-
-                }
-
-                CommandContextItem? listSubtitlesCommand = null;
-                CommandContextItem? listAutoCaptionsCommand = null;
-
-
-                if (videoData?.Subtitles?.Count > 0)
-                {
-                    listSubtitlesCommand = new CommandContextItem(
-                        new SubtitlesPage(queryURL, videoData.Subtitles, false, _ytDlp, _settingsManager))
-                    {
-                        Icon = new IconInfo("\uf15f"),
-                        Title = "ListSubtitles".ToLocalized(),
-                    };
-                }
-                if (videoData?.AutomaticCaptions?.Count > 0)
-                {
-                    listAutoCaptionsCommand = new CommandContextItem(
-                        new SubtitlesPage(queryURL, videoData.AutomaticCaptions, true, _ytDlp, _settingsManager))
-                    {
-                        Icon = new IconInfo("\ued0c"),
-                        Title = "ListAutoCaptions".ToLocalized(),
-                    };
-                }
-
-                var uiSettings = new UISettings();
-                var accentColor = uiSettings.GetColorValue(UIColorType.AccentDark2);
-                var foregroundColor = uiSettings.GetColorValue(UIColorType.Foreground);
-
-                foreach (var format in formatsOrdered)
-                {
-                    var formatObject = format;
-
-                    if (formatObject != null)
-                    {
-                        var formatListItem = new VideoFormatListItem(queryURL, videoTitle, thumbnail, formatObject, _ytDlp, _settingsManager);
-                        var moreCommands = formatListItem.MoreCommands.ToList();
-
-                        var trimVideoForm = new TrimVideoFormPage(queryURL, _settingsManager, videoData, format, _ytDlp);
-                        var trimVideoCommand = new CommandContextItem(trimVideoForm)
-                        {
-                            Icon = new IconInfo("\ue8c6"),
-                            Title = "TrimVideo".ToLocalized(),
-                        };
-                        moreCommands.Add(trimVideoCommand);
-
-                        if (listSubtitlesCommand != null)
-                            moreCommands.Add(listSubtitlesCommand);
-
-                        if (listAutoCaptionsCommand != null)
-                            moreCommands.Add(listAutoCaptionsCommand);
-
-                        //var selectToMergeCommand = new CommandContextItem("Select");
-                        var selectToMergeCommand = CommandsHelper.CreateCyclicCommand(
-                            "Select",
-                            () =>
-                            {
-                                _itemsToMerge.Add(formatListItem);
-
-                                var tags = formatListItem.Tags.ToList();
-                                tags.Add(new Tag("Selected")
-                                {
-                                    Background = new OptionalColor(true, new Color(accentColor.R, accentColor.G, accentColor.B, accentColor.A)),
-                                    Foreground = new OptionalColor(true, new Color(foregroundColor.R, foregroundColor.G, foregroundColor.B, foregroundColor.A))
-                                });
-                                formatListItem.Tags = tags.ToArray();
-                            },
-                            "Unselect",
-                            () =>
-                            {
-                                _itemsToMerge.Remove(formatListItem);
-
-                                var tags = formatListItem.Tags.ToList();
-                                tags.RemoveAll(t => t.Text == "Selected");
-                                formatListItem.Tags = tags.ToArray();
-                            },
-                            new IconInfo("\ue710"),
-                            new IconInfo("\ue711")
-                        );
-
-                        moreCommands.Add(selectToMergeCommand);
-
-                        formatListItem.MoreCommands = moreCommands.ToArray();
-
-                        _itens.Add(formatListItem);
-                    }
-                }
-                _fallbackItems = _itens.ToList();
-                if (audioOnlyQuery)
-                {
-                    _itens = _fallbackItems.Where(item => item.Title == "audio only").ToList();
-                }
-                RaiseItemsChanged(_itens.Count);
-                IsLoading = false;
-            }
-            catch (System.Exception ex)
-            {
-                HandleError(ex.Message);
-                IsLoading = false;
+                HandleError("SomethingWrong".ToLocalized(), "EmptyDataYtDlp".ToLocalized());
                 return;
             }
 
+            if (videoData?.Formats == null && videoData?.Entries == null)
+            {
+                _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, videoData, _ytDlp, _settingsManager));
+                RaiseItemsChanged(1);
+                return;
+            }
+
+            Title = $"PLAYLIST {isPlaylistURL}";
+
+            if (isPlaylistURL)
+            {
+                ApplyPlaylistData(videoData!);
+                RaiseItemsChanged(1);
+            }
+
+            var items = BuildFormatListItems(videoData, queryURL);
+            if (items.Count > 0)
+            {
+                _itens.AddRange(items);
+            }
+
+            _fallbackItems = _itens.ToList();
+
+            RaiseItemsChanged(_itens.Count);
+
         }
+
         catch (System.Exception ex)
         {
+            HandleError("SomethingWrong".ToLocalized(), ex.Message);
             IsLoading = false;
-            EmptyContent = new CommandItem(new NoOpCommand())
-            {
-                Icon = new IconInfo("\uE946"),
-                Title = "Error",
-                Subtitle = ex.Message
-            };
+            return;
         }
-        IsLoading = false;
-        RaiseItemsChanged(_itens.Count);
+
+        finally
+        {
+            IsLoading = false;
+        }
+
     }
 
 
+    private static bool TryParseUrl(string queryText, out string parsedQueryUrl, out bool audioOnly)
+    {
+        audioOnly = queryText.StartsWith("@", StringComparison.OrdinalIgnoreCase);
+        parsedQueryUrl = audioOnly ? queryText.Split("@")[1] : queryText;
+        return DownloadHelper.IsValidUrl(parsedQueryUrl);
+    }
 
-    private void HandleError(string message)
+    private static bool IsPlaylistUrl(string url)
+    {
+        return url.Contains("playlist") || url.Contains("list=") || url.Contains("videos");
+    }
+
+    private static (VideoData? videoData, string thumbnail, string title) ParseVideoData(string json)
+    {
+        var videoData = System.Text.Json.JsonSerializer.Deserialize(json, VideoDataContext.Default.VideoData);
+        string videoTitle = videoData?.Title ?? "MissingTitle".ToLocalized();
+        string thumbnail = videoData?.Thumbnail ?? "MissingThumb".ToLocalized();
+
+        return (videoData, thumbnail, videoTitle);
+    }
+
+    private void ApplyPlaylistData(VideoData data)
+    {
+        var thumbnailFallback = data?.Thumbnails!
+                                    .Where(thumb => thumb.id!.Contains('7'))
+                                    .Select(thumb => thumb.url)
+                                    .FirstOrDefault();
+
+        var playlistData = new JObject()
+        {
+            ["title"] = data.Title,
+            ["thumbnail"] = data.Thumbnail ?? thumbnailFallback,
+            ["videoURL"] = data.OriginalUrl
+        };
+        IsLoading = true;
+
+        var downloadBanner = new StatusMessage();
+        // The command to go to the playlist form is declared here
+        // in order to update the command once the download start
+        Command goToPlaylistDownloadForm = new NoOpCommand();
+
+
+        //The form page will be set after the data from the playlist is fetched
+        var listItem = new VideoFormatListItem(new NoOpCommand())
+        {
+            Tags = [new Tag("Playlist")],
+            Icon = new IconInfo("\uE895"),
+            Title = "FetchingPlaylistTitle".ToLocalized() ?? "MissingTitle",
+            Subtitle = "FetchingPlaylistDescription".ToLocalized() ?? "MissingDescription"
+        };
+        _itens.Insert(0, listItem);
+
+        // This callback will be invoked once the download starts
+        // And will update the command to cancel the playlist download
+        Action<CancellationTokenSource> onSubmitForm = (cancellationToken) =>
+        {
+            listItem.Command = new AnonymousCommand(() =>
+            {
+                // Once the download is cancelled
+                // The previous command should take place of the cancel command 
+                // The form needs to be available again
+                cancellationToken.Cancel();
+                listItem.Command = goToPlaylistDownloadForm;
+                listItem.Title = "PlaylistFetchedTitle".ToLocalized();
+                listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
+                listItem.Icon = new IconInfo("\uE90B");
+            })
+            {
+                Name = "CancelDownload".ToLocalized(),
+                Icon = new IconInfo("\uE711"),
+                Result = CommandResult.KeepOpen()
+            };
+        };
+
+        Action<string> onDownloadFinish = (downloadLocation) =>
+        {
+            listItem.Command = goToPlaylistDownloadForm;
+            listItem.MoreCommands = [new CommandContextItem(ShowOutputDirCommand(downloadLocation))];
+            RaiseItemsChanged(1);
+        };
+
+
+        /// The actual form is constructed here passing the callback declared previously
+        /// This is currently needed because <see cref="CommandResult.GoToPage"/>  is not implemented yet
+        /// Needs future refactoring
+
+
+        //listItem.Command = goToPlaylistDownloadForm;
+        //listItem.Title = "PlaylistFetchedTitle".ToLocalized();
+        //listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
+        //listItem.Icon = new IconInfo("\uE90B");
+        //Title = "PlaylistFetchedTitle".ToLocalized();
+        if (data!.ResultType == "playlist")
+        {
+            var playlistTitle = data?.Title!;
+            playlistData.Add("playlistTitle", playlistTitle);
+            playlistData.Add("downloadPath", Path.Combine(_settingsManager.DownloadLocation, playlistTitle));
+            playlistData.Add("playlistCount", data!.PlaylistCount);
+
+            goToPlaylistDownloadForm = new PlaylistFormPage(_settingsManager, data!, playlistData, _ytDlp, onSubmit: onSubmitForm, onDownloadFinish);
+            listItem.Command = goToPlaylistDownloadForm;
+            listItem.Title = "PlaylistFetchedTitle".ToLocalized();
+            listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
+            listItem.Icon = new IconInfo("\uE90B");
+            IsLoading = false;
+            return;
+        }
+
+        _ = _ytDlp.ExtractPlaylistDataAsync(
+            data.OriginalUrl,
+            onFinish: (playlistDetails) =>
+            {
+                var playlistTitle = playlistDetails["playlistTitle"]?.ToString() ?? string.Empty;
+                var playlistCount = playlistDetails["playlistCount"]?.ToString() ?? string.Empty;
+
+                playlistData.Add("playlistTitle", playlistTitle);
+                playlistData.Add("downloadPath", Path.Combine(_settingsManager.DownloadLocation, playlistTitle));
+                playlistData.Add("playlistCount", playlistCount);
+
+                goToPlaylistDownloadForm = new PlaylistFormPage(_settingsManager, data!, playlistData, _ytDlp, onSubmit: onSubmitForm, onDownloadFinish);
+
+                listItem.Command = goToPlaylistDownloadForm;
+                listItem.Title = "PlaylistFetchedTitle".ToLocalized();
+                listItem.Subtitle = "PlaylistFetchedDescription".ToLocalized();
+                listItem.Icon = new IconInfo("\uE90B");
+            });
+
+
+    }
+
+    private List<VideoFormatListItem> BuildFormatListItems(VideoData videoData, string queryUrl)
+    {
+        var formatsOrdered = _settingsManager.GetSelectedMode == "simple" ?
+                                    FormatHelper.OrderByResolutionDistinct(videoData?.Formats) :
+                                    FormatHelper.OrderByResolution(videoData?.Formats);
+
+        CommandContextItem? listSubtitlesCommand = null;
+        CommandContextItem? listAutoCaptionsCommand = null;
+        var showOutputDir = new CommandContextItem(ShowOutputDirCommand())
+        {
+            Icon = new IconInfo("\uE838"),
+            Title = "ShowOutputDir".ToLocalized(),
+        };
+
+        if (videoData?.Subtitles?.Count > 0)
+        {
+            listSubtitlesCommand = new CommandContextItem(
+                new SubtitlesPage(queryUrl, videoData.Subtitles, false, _ytDlp, _settingsManager))
+            {
+                Icon = new IconInfo("\uf15f"),
+                Title = "ListSubtitles".ToLocalized(),
+            };
+        }
+        if (videoData?.AutomaticCaptions?.Count > 0)
+        {
+            listAutoCaptionsCommand = new CommandContextItem(
+                new SubtitlesPage(queryUrl, videoData.AutomaticCaptions, true, _ytDlp, _settingsManager))
+            {
+                Icon = new IconInfo("\ued0c"),
+                Title = "ListAutoCaptions".ToLocalized(),
+            };
+        }
+
+
+        var items = new List<VideoFormatListItem>();
+
+        foreach (var format in formatsOrdered)
+        {
+            var formatObject = format;
+
+            if (formatObject != null)
+            {
+                var formatListItem = new VideoFormatListItem(queryUrl, videoData?.Title!, videoData?.Thumbnail!, formatObject, _ytDlp, _settingsManager);
+                var moreCommands = formatListItem.MoreCommands.ToList();
+
+                var trimVideoForm = new TrimVideoFormPage(queryUrl, _settingsManager, videoData!, format, _ytDlp);
+                var trimVideoCommand = new CommandContextItem(trimVideoForm)
+                {
+                    Icon = new IconInfo("\ue8c6"),
+                    Title = "TrimVideo".ToLocalized(),
+                };
+                moreCommands.Add(trimVideoCommand);
+                moreCommands.Add(showOutputDir);
+
+                if (listSubtitlesCommand != null)
+                    moreCommands.Add(listSubtitlesCommand);
+
+                if (listAutoCaptionsCommand != null)
+                    moreCommands.Add(listAutoCaptionsCommand);
+
+                var selectCommand = BuildQuickMergeCommand(formatListItem);
+
+                moreCommands.Add(selectCommand);
+
+                formatListItem.MoreCommands = moreCommands.ToArray();
+
+                items.Add(formatListItem);
+            }
+        }
+
+        return items;
+    }
+
+    private AnonymousCommand ShowOutputDirCommand(string? downloadPath = default)
+    {
+        return new AnonymousCommand(() =>
+        {
+            Process.Start("explorer.exe", $"/select,\"{downloadPath ?? _settingsManager.DownloadLocation}\"");
+        })
+        {
+            Result = CommandResult.KeepOpen(),
+            Icon = new IconInfo("\uE838"),
+            Name = "ShowOutputDir".ToLocalized(),
+        };
+    }
+
+    private CommandContextItem BuildQuickMergeCommand(VideoFormatListItem formatListItem)
+    {
+
+        var uiSettings = new UISettings();
+        var accentColor = uiSettings.GetColorValue(UIColorType.AccentDark2);
+        var foregroundColor = uiSettings.GetColorValue(UIColorType.Foreground);
+
+        return CommandsHelper.CreateCyclicCommand(
+                    "Select",
+                    () =>
+                    {
+                        _selectedItems.Add(formatListItem);
+
+                        var tags = formatListItem.Tags.ToList();
+                        tags.Add(new Tag("Selected")
+                        {
+                            Background = new OptionalColor(true, new Color(accentColor.R, accentColor.G, accentColor.B, accentColor.A)),
+                            Foreground = new OptionalColor(true, new Color(foregroundColor.R, foregroundColor.G, foregroundColor.B, foregroundColor.A))
+                        });
+                        formatListItem.Tags = tags.ToArray();
+                        if (_selectedItems.Count > 1)
+                        {
+                            var videoFormats = _selectedItems
+                                .Where(FormatHelper.IsVideo)
+                                .ToList();
+
+                            var audioFormats = _selectedItems
+                                .Where(FormatHelper.IsAudio)
+                                .Where(item => item.Title.Contains("audio", StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+
+                            if (videoFormats.Count == 1 && audioFormats.Count == 1)
+                            {
+                                var selectedVideo = videoFormats.First();
+                                var selectedAudio = audioFormats.First();
+                                var quickMergeList = new List<VideoFormatListItem>
+                                {
+                                    selectedVideo,
+                                    selectedAudio
+                                };
+
+                                var videoFormatId = selectedVideo.Tags.FirstOrDefault()?.Text;
+                                var audioFormatId = selectedAudio.Tags.FirstOrDefault()?.Text;
+
+                                if (!string.IsNullOrWhiteSpace(videoFormatId) && !string.IsNullOrWhiteSpace(audioFormatId))
+                                {
+                                    foreach (var item in quickMergeList)
+                                    {
+                                        var commands = item.MoreCommands?.ToList() ?? new List<IContextItem>();
+                                        var cancellationToken = new CancellationTokenSource();
+                                        Command quickMergeCommand = new AnonymousCommand(() => { });
+
+                                        var cancelDownloadCommand = new AnonymousCommand(() =>
+                                        {
+                                            cancellationToken.Cancel();
+                                            item.Command = quickMergeCommand;
+                                        })
+                                        {
+                                            Name = "CancelDownload".ToLocalized(),
+                                            Icon = new IconInfo("\uE711"),
+                                            Result = CommandResult.KeepOpen(),
+                                        };
+                                        var downloadBanner = new StatusMessage();
+                                        quickMergeCommand = new AnonymousCommand
+                                        (
+                                          async () =>
+                                          {
+                                              item.Command = cancelDownloadCommand;
+                                              await _ytDlp.TryExecuteDownloadAsync(
+                                                        item.VideoUrl,
+                                                        downloadBanner,
+                                                        item.Details?.Title ?? "MissingTitle".ToLocalized(),
+                                                        videoFormatId,
+                                                        audioFormatId: audioFormatId,
+                                                        cancellationToken: cancellationToken.Token
+                                                    );
+                                          }
+                                        )
+                                        {
+                                            Name = "QuickMerge",
+                                            Result = CommandResult.KeepOpen()
+                                        };
+
+                                        item.Command = quickMergeCommand;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "Unselect",
+                    () =>
+                    {
+                        _selectedItems.Remove(formatListItem);
+
+                        var tags = formatListItem.Tags.ToList();
+                        tags.RemoveAll(t => t.Text == "Selected");
+                        formatListItem.Tags = tags.ToArray();
+                    },
+                    new IconInfo("\ue710"),
+                    new IconInfo("\ue711")
+                );
+    }
+
+    public static (string, string, IconInfo?) GetError(int errorCode)
+    {
+        return errorCode switch
+        {
+            401 => ("UserRestricted".ToLocalized(), "UserRestrictedMessage".ToLocalized(), new IconInfo("\ue72e")),
+            403 => ("AgeRestricted".ToLocalized(), "AgeRestrictedMessage".ToLocalized(), new IconInfo("🔞")),
+            _ => ("Error".ToLocalized(), "SomethingWrong".ToLocalized(), null)
+        };
+    }
+
+    private void HandleError(string title, string message, IconInfo? icon = null)
     {
         IsLoading = false;
         EmptyContent = new CommandItem(new NoOpCommand())
         {
-            Icon = new IconInfo("\uE946"),
-            Title = "Error",
+            Icon = icon ?? new IconInfo("\uE946"),
+            Title = title,
             Subtitle = message
         };
     }

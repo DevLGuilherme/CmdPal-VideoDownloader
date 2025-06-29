@@ -133,6 +133,20 @@ namespace YtDlpExtension.Pages
                                                       "placeholder": "00:00:10",
                                                       "regex": "^([0-1]?\\d|2[0-3]):[0-5]\\d:[0-5]\\d$",
                                                       "errorMessage": "Invalid Format. Use HH:mm:ss"
+                                                    },
+                                                    {
+                                                        "type": "ActionSet",
+                                                        "actions": [
+                                                            {
+                                                                "type": "Action.Submit",
+                                                                "title": "Download",
+                                                                "data": {
+                                                                    "actions": "downloadPlaylist"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "spacing": "Padding",
+                                                        "horizontalAlignment": "Center"
                                                     }
                                                 ]
                                             }
@@ -145,12 +159,6 @@ namespace YtDlpExtension.Pages
                 ],
                 "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
                 "version": "1.6",
-                "actions": [
-                    {
-                        "type": "Action.Submit",
-                        "title": "Download"
-                    }
-                ],
                 "verticalContentAlignment": "Center"
             }
 
