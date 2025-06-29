@@ -76,10 +76,17 @@ namespace YtDlpExtension.Helpers
             ErrorMessage = "Custom Format Selector can't be empty"
         };
 
+        private readonly TextSetting _cookiesFileLocation = new("cookiesFileLocation", string.Empty)
+        {
+            Label = "cookies.txt file location",
+            Description = "cookies.txt file location"
+        };
+
 
         public string DownloadLocation => _downloadLocation.Value ?? DownloadHelper.GetDefaultDownloadPath();
         public string GetSelectedVideoOutputFormat => _videoOutputFormats.Value ?? "mp4";
         public string GetSelectedAudioOutputFormat => _audioOutputFormats.Value ?? "mp3";
+        public string GetCookiesFile => _cookiesFileLocation.Value ?? string.Empty;
         public string GetSelectedMode => _mode.Value ?? "simple";
         public bool GetDownloadOnPaste => _downloadOnPaste.Value;
         public string GetCustomFormatSelector => _customFormatSelector.Value ?? string.Empty;
@@ -97,6 +104,7 @@ namespace YtDlpExtension.Helpers
             Settings.Add(_downloadLocation);
             Settings.Add(_videoOutputFormats);
             Settings.Add(_audioOutputFormats);
+            Settings.Add(_cookiesFileLocation);
             Settings.Add(_customFormatSelector);
             Settings.Add(_downloadOnPaste);
             try

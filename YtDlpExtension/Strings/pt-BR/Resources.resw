@@ -123,6 +123,13 @@
   <data name="AdvancedOptions" xml:space="preserve">
     <value>Opções Avançadas</value>
   </data>
+  <data name="AgeRestricted" xml:space="preserve">
+    <value>Conteúdo com Restrição de Idade</value>
+  </data>
+  <data name="AgeRestrictedMessage" xml:space="preserve">
+    <value>Este conteúdo pode não ser acessível para todos os públicos e requer autenticação.
+Adicione o arquivo de cookies nas configurações para prosseguir.</value>
+  </data>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} já foi baixado</value>
   </data>
@@ -232,8 +239,14 @@ Comece com @ para apenas áudio.</value>
   <data name="Settings" xml:space="preserve">
     <value>Configurações</value>
   </data>
+  <data name="ShowOutputDir" xml:space="preserve">
+    <value>Abrir Pasta</value>
+  </data>
   <data name="Size" xml:space="preserve">
     <value>Tamanho</value>
+  </data>
+  <data name="SomethingWrong" xml:space="preserve">
+    <value>Algo deu errado</value>
   </data>
   <data name="Start" xml:space="preserve">
     <value>Início</value>
@@ -243,6 +256,13 @@ Comece com @ para apenas áudio.</value>
   </data>
   <data name="TrimVideo" xml:space="preserve">
     <value>Cortar vídeo</value>
+  </data>
+  <data name="UserRestricted" xml:space="preserve">
+    <value>Conteúdo disponível apenas para usuários</value>
+  </data>
+  <data name="UserRestrictedMessage" xml:space="preserve">
+    <value>Este conteúdo está disponível apenas para usuários cadastrados.
+Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   </data>
   <data name="VCodec" xml:space="preserve">
     <value>Codec de Vídeo</value>

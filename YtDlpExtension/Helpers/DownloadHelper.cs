@@ -55,13 +55,13 @@ namespace YtDlpExtension.Helpers
             return Regex.IsMatch(url.Trim(), regexPattern, RegexOptions.IgnoreCase);
         }
 
-        private async Task<string> ExecuteDownloadProcessAsync(
+        private async Task<Command> ExecuteDownloadProcessAsync(
             ProcessStartInfo psi,
             StatusMessage downloadBanner,
             Action<string>? onOutputData = null,
             Action<string>? onErrorData = null,
             Action? onStart = null,
-            Action? onFinish = null,
+            Action<Command>? onFinish = null,
             Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
@@ -115,8 +115,6 @@ namespace YtDlpExtension.Helpers
 
             };
 
-
-
             try
             {
                 onStart?.Invoke();
@@ -145,7 +143,24 @@ namespace YtDlpExtension.Helpers
                 {
                     SetTitle($"✅ {"Downloaded".ToLocalized()}");
                     downloadBanner.UpdateState(DownloadState.Finished);
-                    onFinish?.Invoke();
+
+                    var showInExplorerCommand = new AnonymousCommand(() =>
+                    {
+                        var filepath = ExtractDownloadPath(psi);
+                        try
+                        {
+                            Process.Start("explorer.exe", $"/select,\"{filepath}\"");
+                        }
+                        catch
+                        {
+                            downloadBanner.UpdateState(DownloadState.Error, "Error creating open file command");
+                        }
+                    })
+                    {
+                        Name = "Open in folder"
+                    };
+
+                    onFinish?.Invoke(showInExplorerCommand);
                 }
                 else if (isCancelled)
                 {
@@ -163,13 +178,45 @@ namespace YtDlpExtension.Helpers
             {
                 SetTitle($"⛔ {"Cancelled".ToLocalized()}");
                 downloadBanner.UpdateState(DownloadState.Cancelled);
+                return null;
             }
-            return downloadProcess.HasExited ? downloadProcess.ExitCode.ToString(CultureInfo.InvariantCulture) : "-1";
+
+            if (ExtractDownloadPath(psi) is var filePath)
+            {
+                return new AnonymousCommand(() =>
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error opening file: {ex.Message}");
+                    }
+                })
+                {
+                    Name = $"Open in folder",
+                    Icon = new IconInfo("\uE838")
+                };
+            }
+
+            return null;
+
         }
 
-        public async Task<(string, string)> TryExecuteQueryAsync(string url)
+        public async Task<(string, string, int)> TryExecuteQueryAsync(string url)
         {
-            var arguments = "--dump-single-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose";
+            var arguments = "--dump-single-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose --flat-playlist";
+
+            if (_settings.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies))
+            {
+                arguments = $"{arguments} --cookies \"{cookies}\"";
+            }
+            var errorCode = 0;
+            //var debugBanner = new StatusMessage();
+
+            //debugBanner.UpdateState(DownloadState.CustomMessage, arguments);
+            //debugBanner.ShowStatus();
 
             var psi = new ProcessStartInfo
             {
@@ -195,6 +242,14 @@ namespace YtDlpExtension.Helpers
                 if (line.Contains("[info]"))
                 {
                     bestformat = line;
+                }
+                if (line.Contains("This video is age-restricted"))
+                {
+                    errorCode = 403;
+                }
+                if (line.Contains("This video is only available for registered users"))
+                {
+                    errorCode = 401;
                 }
             };
 
@@ -229,10 +284,10 @@ namespace YtDlpExtension.Helpers
             NotifyItemsChanged();
             SetLoading(false);
 
-            return (output, bestformat);
+            return (output, bestformat, errorCode);
         }
 
-        public async Task<string> TryExecutePlaylistDownloadAsync(
+        public async Task<Command?> TryExecutePlaylistDownloadAsync(
             string url,
             StatusMessage downloadBanner,
             string downloadPath,
@@ -243,7 +298,7 @@ namespace YtDlpExtension.Helpers
             string audioFormatId = "bestaudio",
             bool audioOnly = false,
             Action? onStart = null,
-            Action? onFinish = null,
+            Action<Command>? onFinish = null,
             Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
@@ -327,7 +382,7 @@ namespace YtDlpExtension.Helpers
             );
         }
 
-        public async Task<string> TryExecuteDownloadAsync(
+        public async Task<Command?> TryExecuteDownloadAsync(
             string url,
             StatusMessage downloadBanner,
             string videoTitle = "",
@@ -337,7 +392,7 @@ namespace YtDlpExtension.Helpers
             string audioFormatId = "bestaudio",
             bool audioOnly = false,
             Action? onStart = null,
-            Action? onFinish = null,
+            Action<Command>? onFinish = null,
             Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
@@ -355,6 +410,11 @@ namespace YtDlpExtension.Helpers
                 "-o", "\"%(title)s - %(format_id)s - %(resolution)s.%(ext)s\"",
                 "-P", $"\"{downloadPath}\""
             };
+
+            if (_settings.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies))
+            {
+                arguments.Add($"--cookies \"{cookies}\"");
+            }
 
             if (audioOnly)
             {
@@ -403,9 +463,6 @@ namespace YtDlpExtension.Helpers
             };
 
             using var downloadProcess = new Process { StartInfo = psi };
-            var progress = 0d;
-            //return argumentsFinal;
-            //downloadBanner.UpdateState(DownloadState.Downloading, $"{"Downloading".ToLocalized(videoTitle)}");
 
             var timeRegex = new Regex(@"time=(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)", RegexOptions.Compiled);
             return await ExecuteDownloadProcessAsync(
@@ -471,14 +528,14 @@ namespace YtDlpExtension.Helpers
             );
         }
 
-        public async Task<string> TryExecuteSubtitleDownloadAsync(
+        public async Task<Command> TryExecuteSubtitleDownloadAsync(
             string url,
             string subtitleKey,
             StatusMessage downloadBanner,
             string downloadPath,
             bool autoSubtitle = false,
             Action? onStart = null,
-            Action? onFinish = null,
+            Action<Command>? onFinish = null,
             Action? onAlreadyDownloaded = null,
             CancellationToken cancellationToken = default
         )
@@ -536,6 +593,13 @@ namespace YtDlpExtension.Helpers
                 onAlreadyDownloaded,
                 cancellationToken
             );
+        }
+
+        private static string ExtractDownloadPath(ProcessStartInfo psi)
+        {
+            var match = Regex.Match(psi.Arguments, @"-P\s+(?:""([^""]+)""|([^\s]+))");
+            if (!match.Success) return string.Empty;
+            return match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
         }
 
 

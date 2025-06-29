@@ -123,6 +123,13 @@
   <data name="AdvancedOptions" xml:space="preserve">
     <value>Advanced Options</value>
   </data>
+  <data name="AgeRestricted" xml:space="preserve">
+    <value>Age Restricted Content</value>
+  </data>
+  <data name="AgeRestrictedMessage" xml:space="preserve">
+    <value>This content may not be available to all users and require authentication.
+Provide the cookies file in the Settings page to proceed.</value>
+  </data>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} already downloaded</value>
   </data>
@@ -232,8 +239,14 @@ Start with @ for audio only.</value>
   <data name="Settings" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="ShowOutputDir" xml:space="preserve">
+    <value>Open Output Directory</value>
+  </data>
   <data name="Size" xml:space="preserve">
     <value>Size</value>
+  </data>
+  <data name="SomethingWrong" xml:space="preserve">
+    <value>Something went wrong</value>
   </data>
   <data name="Start" xml:space="preserve">
     <value>Start</value>
@@ -243,6 +256,13 @@ Start with @ for audio only.</value>
   </data>
   <data name="TrimVideo" xml:space="preserve">
     <value>Trim video</value>
+  </data>
+  <data name="UserRestricted" xml:space="preserve">
+    <value>Content available only for registered users</value>
+  </data>
+  <data name="UserRestrictedMessage" xml:space="preserve">
+    <value>This content  is only available for registered users.
+Provide the cookies file in the Settings page to proceed.</value>
   </data>
   <data name="VCodec" xml:space="preserve">
     <value>Video Codec</value>
