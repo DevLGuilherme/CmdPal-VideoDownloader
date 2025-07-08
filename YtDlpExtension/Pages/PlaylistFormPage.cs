@@ -28,9 +28,6 @@ namespace YtDlpExtension.Pages
             _downloadBanner = downloadBanner ?? new();
             _onSubmit = onSubmit;
             _videoData = videoData;
-            Name = "Open";
-            Title = "Open";
-
         }
 
         public override IContent[] GetContent()

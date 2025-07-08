@@ -56,7 +56,7 @@ namespace YtDlpExtension.Helpers
 
             var versionAtUpdate = ++stateObj.UpdateVersion;
 
-            if (state is not DownloadState.Downloading and not DownloadState.Extracting)
+            if ((state is not DownloadState.Downloading and not DownloadState.Extracting) && isIndeterminate == false)
             {
                 var cts = new CancellationTokenSource();
                 var token = cts.Token;

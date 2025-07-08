@@ -133,8 +133,17 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} já foi baixado</value>
   </data>
+  <data name="AppMode" xml:space="preserve">
+    <value>Modo da aplicação</value>
+  </data>
   <data name="AudioOutputFormat" xml:space="preserve">
     <value>Formato de saída de áudio</value>
+  </data>
+  <data name="AutoDownload" xml:space="preserve">
+    <value>Iniciar download automaticamente</value>
+  </data>
+  <data name="AutoDownloadDescription" xml:space="preserve">
+    <value>Inicia o download do video ao colar (Somente quando definido um seletor de formato personalizado)</value>
   </data>
   <data name="BestAvailable" xml:space="preserve">
     <value>Melhor disponível</value>
@@ -150,6 +159,9 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   </data>
   <data name="Confirm" xml:space="preserve">
     <value>Confirmar</value>
+  </data>
+  <data name="CookiesFile" xml:space="preserve">
+    <value>Local do arquivo cookies.txt</value>
   </data>
   <data name="CustomFormatSelector" xml:space="preserve">
     <value>Seletor de formatos personalizado</value>
@@ -179,8 +191,7 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
     <value>Baixando legenda: {0}</value>
   </data>
   <data name="EmptyContentTiltle" xml:space="preserve">
-    <value>Cole uma URL para baixar o vídeo.
-Comece com @ para apenas áudio.</value>
+    <value>Cole uma URL para começar.</value>
   </data>
   <data name="EmptyDataYtDlp" xml:space="preserve">
     <value>Nenhum dado recebido do yt-dlp</value>
@@ -203,8 +214,14 @@ Comece com @ para apenas áudio.</value>
   <data name="FetchingPlaylistTitle" xml:space="preserve">
     <value>Baixando dados da playlist</value>
   </data>
+  <data name="Format" xml:space="preserve">
+    <value>Formato</value>
+  </data>
   <data name="FormatId" xml:space="preserve">
     <value>ID do Formato</value>
+  </data>
+  <data name="Formats" xml:space="preserve">
+    <value>Formatos</value>
   </data>
   <data name="InQueue" xml:space="preserve">
     <value>Na fila</value>
@@ -220,6 +237,13 @@ Comece com @ para apenas áudio.</value>
   </data>
   <data name="MissingTitle" xml:space="preserve">
     <value>Título Ausente</value>
+  </data>
+  <data name="Modes" xml:space="preserve">
+    <value>Simples: Poucos formatos com foco em compatibilidade em vez de qualidade (padrão) 
+Avançado: Todos os formatos disponíveis.</value>
+  </data>
+  <data name="NewWindowOpen" xml:space="preserve">
+    <value>Processo rodando em uma janela externa</value>
   </data>
   <data name="PlaceholderText" xml:space="preserve">
     <value>Cole a URL de um vídeo</value>

@@ -28,8 +28,8 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private DownloadHelper _ytDlp;
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
     private readonly SettingsManager _settingsManager;
-    private string _currentUrl;
-    private CancellationTokenSource? _debounceCts;
+    //private string _currentUrl;
+    //private CancellationTokenSource? _debounceCts;
     private string _lastSearch = string.Empty;
 
     public List<VideoFormatListItem> GetActiveDownloads()
@@ -42,7 +42,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         _settingsManager = settingsManager;
         _ytDlp = ytDlp;
         Icon = _ytDlpIcon;
-        Title = "yt-dlp-extension";
+        Title = "Video Downloader";
         Name = "Open";
         PlaceholderText = "PlaceholderText".ToLocalized();
         ShowDetails = true;
@@ -50,6 +50,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         {
             Icon = _ytDlpIcon,
             Title = "EmptyContentTiltle".ToLocalized(),
+            Subtitle = $"{_settingsManager.GetSelectedMode} mode",
             MoreCommands = [new CommandContextItem(
                     "Open folder",
                     "Open selected download folder",
@@ -214,7 +215,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                           {
                               item.Command = cancelDownloadCommand;
                               await _ytDlp.TryExecuteDownloadAsync(
-                                        item.VideoUrl,
+                                        item.VideoUrl!,
                                         downloadBanner,
                                         item.Details?.Title ?? "MissingTitle".ToLocalized(),
                                         videoFormatId,
@@ -246,7 +247,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             }
 
         }
-        catch (Exception ex)
+        catch
         {
             // Resets the list in case of error
             _itens.Clear();
@@ -258,6 +259,8 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private async Task UpdateListAsync(string queryText)
     {
         _itens.Clear();
+        _selectedItems.Clear();
+        _fallbackItems.Clear();
         IsLoading = true;
         if (!TryParseUrl(queryText, out var queryURL, out var audioOnlyQuery))
         {
@@ -293,12 +296,12 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
             if (videoData?.Formats == null && videoData?.Entries == null)
             {
-                _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, videoData, _ytDlp, _settingsManager));
+                _itens.Add(new VideoFormatListItem(queryURL, videoTitle, thumbnail, videoData!, _ytDlp, _settingsManager));
                 RaiseItemsChanged(1);
                 return;
             }
 
-            Title = $"PLAYLIST {isPlaylistURL}";
+            Title = $"{videoTitle}";
 
             if (isPlaylistURL)
             {
@@ -363,13 +366,14 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
         var playlistData = new JObject()
         {
-            ["title"] = data.Title,
-            ["thumbnail"] = data.Thumbnail ?? thumbnailFallback,
-            ["videoURL"] = data.OriginalUrl
+            ["title"] = data?.Title,
+            ["thumbnail"] = data?.Thumbnail ?? thumbnailFallback,
+            ["videoURL"] = data?.OriginalUrl
         };
         IsLoading = true;
 
         var downloadBanner = new StatusMessage();
+
         // The command to go to the playlist form is declared here
         // in order to update the command once the download start
         Command goToPlaylistDownloadForm = new NoOpCommand();
@@ -442,7 +446,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         }
 
         _ = _ytDlp.ExtractPlaylistDataAsync(
-            data.OriginalUrl,
+            data.OriginalUrl!,
             onFinish: (playlistDetails) =>
             {
                 var playlistTitle = playlistDetails["playlistTitle"]?.ToString() ?? string.Empty;
@@ -465,9 +469,14 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     private List<VideoFormatListItem> BuildFormatListItems(VideoData videoData, string queryUrl)
     {
-        var formatsOrdered = _settingsManager.GetSelectedMode == "simple" ?
-                                    FormatHelper.OrderByResolutionDistinct(videoData?.Formats) :
-                                    FormatHelper.OrderByResolution(videoData?.Formats);
+        var formatsOrdered = (_settingsManager.GetSelectedMode, videoData.IsLive) switch
+        {
+            ("simple", false) => FormatHelper.OrderByResolutionDistinct(videoData?.Formats),
+            (_, true) => FormatHelper.OrderByResolution(videoData?.Formats),
+            _ => FormatHelper.OrderByResolution(videoData?.Formats)
+        };
+
+
 
         CommandContextItem? listSubtitlesCommand = null;
         CommandContextItem? listAutoCaptionsCommand = null;
@@ -505,27 +514,34 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
             if (formatObject != null)
             {
-                var formatListItem = new VideoFormatListItem(queryUrl, videoData?.Title!, videoData?.Thumbnail!, formatObject, _ytDlp, _settingsManager);
+                var formatListItem = new VideoFormatListItem(queryUrl, videoData?.Title!, videoData?.Thumbnail!, formatObject, _ytDlp, _settingsManager, isLive: videoData!.IsLive);
                 var moreCommands = formatListItem.MoreCommands.ToList();
 
-                var trimVideoForm = new TrimVideoFormPage(queryUrl, _settingsManager, videoData!, format, _ytDlp);
-                var trimVideoCommand = new CommandContextItem(trimVideoForm)
-                {
-                    Icon = new IconInfo("\ue8c6"),
-                    Title = "TrimVideo".ToLocalized(),
-                };
-                moreCommands.Add(trimVideoCommand);
-                moreCommands.Add(showOutputDir);
 
+                if (videoData.IsLive == false)
+                {
+                    var trimVideoForm = new TrimVideoFormPage(queryUrl, _settingsManager, videoData!, format, _ytDlp, _selectedItems);
+                    var trimVideoCommand = new CommandContextItem(trimVideoForm)
+                    {
+                        Icon = new IconInfo("\ue8c6"),
+                        Title = "TrimVideo".ToLocalized(),
+                    };
+                    moreCommands.Add(trimVideoCommand);
+                }
+
+                moreCommands.Add(showOutputDir);
                 if (listSubtitlesCommand != null)
                     moreCommands.Add(listSubtitlesCommand);
 
                 if (listAutoCaptionsCommand != null)
                     moreCommands.Add(listAutoCaptionsCommand);
 
-                var selectCommand = BuildQuickMergeCommand(formatListItem);
+                if (_settingsManager.GetSelectedMode == ExtensionMode.ADVANCED)
+                {
+                    var selectCommand = BuildQuickMergeCommand(formatListItem);
+                    moreCommands.Add(selectCommand);
+                }
 
-                moreCommands.Add(selectCommand);
 
                 formatListItem.MoreCommands = moreCommands.ToArray();
 
@@ -540,7 +556,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     {
         return new AnonymousCommand(() =>
         {
-            Process.Start("explorer.exe", $"/select,\"{downloadPath ?? _settingsManager.DownloadLocation}\"");
+            Process.Start("explorer.exe", $"\"{downloadPath ?? _settingsManager.DownloadLocation}\"");
         })
         {
             Result = CommandResult.KeepOpen(),
@@ -577,7 +593,6 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
                             var audioFormats = _selectedItems
                                 .Where(FormatHelper.IsAudio)
-                                .Where(item => item.Title.Contains("audio", StringComparison.OrdinalIgnoreCase))
                                 .ToList();
 
                             if (videoFormats.Count == 1 && audioFormats.Count == 1)
@@ -618,12 +633,18 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                                           {
                                               item.Command = cancelDownloadCommand;
                                               await _ytDlp.TryExecuteDownloadAsync(
-                                                        item.VideoUrl,
+                                                        item.VideoUrl!,
                                                         downloadBanner,
                                                         item.Details?.Title ?? "MissingTitle".ToLocalized(),
                                                         videoFormatId,
                                                         audioFormatId: audioFormatId,
-                                                        cancellationToken: cancellationToken.Token
+                                                        cancellationToken: cancellationToken.Token,
+                                                        onFinish: (showFileCommand) =>
+                                                        {
+                                                            var commands = item.MoreCommands?.ToList();
+                                                            item.Command = quickMergeCommand;
+                                                            item.MoreCommands = commands?.ToArray() ?? [];
+                                                        }
                                                     );
                                           }
                                         )

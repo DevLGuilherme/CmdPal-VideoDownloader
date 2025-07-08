@@ -8,7 +8,7 @@ using YtDlpExtension.Helpers;
 using YtDlpExtension.Metada;
 namespace YtDlpExtension.Pages
 {
-    public sealed partial class VideoFormatListItem : ListItem, IDisposable, ICloneable
+    public sealed partial class VideoFormatListItem : ListItem, IDisposable
     {
 
         private readonly DownloadHelper _ytDlp;
@@ -16,12 +16,13 @@ namespace YtDlpExtension.Pages
         private readonly SettingsManager _settings;
         private StatusMessage _downloadBanner = new();
         private StatusMessage _downloadAudioOnlyBanner = new();
-        public string VideoUrl { get; }
-        private string _videoTitle;
-        private string _thumbnail;
+        public string? VideoUrl { get; }
+        private string? _videoTitle;
+        private string? _thumbnail;
         private VideoData? _videoData;
+        private Format? _formatData;
         public DownloadState GetDownloadState => _downloadBanner.CurrentState();
-
+        public Format? GetFormatData => _formatData != null ? _formatData : null;
 
         /// <summary>
         /// This Constructor is used to create a video with a format list from yt-dlp.
@@ -32,7 +33,7 @@ namespace YtDlpExtension.Pages
         /// <param name="videoFormatObject"></param>
         /// <param name="ytDlp"></param>
         /// <param name="settings"></param>
-        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, Format videoFormatObject, DownloadHelper ytDlp, SettingsManager settings, float? duration = 0)
+        public VideoFormatListItem(string queryURL, string videoTitle, string thumbnail, Format videoFormatObject, DownloadHelper ytDlp, SettingsManager settings, float? duration = 0, bool? isLive = false)
         {
             var uiSettings = new UISettings();
             var accentColor = uiSettings.GetColorValue(UIColorType.Accent);
@@ -42,15 +43,16 @@ namespace YtDlpExtension.Pages
             _settings = settings;
             _thumbnail = thumbnail;
             _videoTitle = videoTitle;
-            var formatId = videoFormatObject.format_id ?? "";
+            _formatData = videoFormatObject;
+            var formatId = videoFormatObject.FormatID ?? "";
             // var resolution = (_settings.GetSelectedMode == "simple" ? GetResolutionCategory(videoFormatObject.width, videoFormatObject.height) : videoFormatObject.resolution) ?? "";
-            var resolution = videoFormatObject.resolution ?? "";
-            var resolutionCategory = GetResolutionCategory(videoFormatObject.width, videoFormatObject.height);
-            var ext = videoFormatObject.ext ?? "";
+            var resolution = videoFormatObject.Resolution ?? "";
+            var resolutionCategory = GetResolutionCategory(videoFormatObject.Width, videoFormatObject.Height);
+            var ext = videoFormatObject.Ext ?? "";
 
             List<Tag> _tags = [];
 
-            if (_settings.GetSelectedMode == "advanced")
+            if (_settings.GetSelectedMode == ExtensionMode.ADVANCED)
             {
                 _tags.Add(new Tag(formatId));
                 _tags.Add(new Tag(ext)
@@ -89,7 +91,7 @@ namespace YtDlpExtension.Pages
             );
             _commands.Add(audioOnlyContextItem);
 
-            if (_settings.GetSelectedMode == "simple")
+            if (_settings.GetSelectedMode == ExtensionMode.SIMPLE)
             {
                 Title = resolutionCategory;
             }
@@ -102,6 +104,9 @@ namespace YtDlpExtension.Pages
             Tags = _tags.ToArray();
             Details = BuildDetails(videoTitle, thumbnail, videoFormatObject);
             MoreCommands = _commands.ToArray();
+
+            var isLiveVideo = isLive ?? false;
+
             Command startDownloadCommand = new NoOpCommand();
 
 
@@ -143,34 +148,95 @@ namespace YtDlpExtension.Pages
                 Command = null;
             };
 
-            startDownloadCommand = new AnonymousCommand(async () =>
-            {
-                await _ytDlp.TryExecuteDownloadAsync(
-                        queryURL,
-                        _downloadBanner,
-                        videoTitle,
-                        formatId,
-                        onStart: onDownloadStart,
-                        onFinish: onDownloadFinished,
-                        onAlreadyDownloaded: onAlreadyDownloaded,
-                        cancellationToken: _token.Token
-                    );
-            })
-            {
-                Name = $"Download ({settings.GetSelectedVideoOutputFormat})",
-                Icon = new IconInfo("\uE896"),
-                Result = CommandResult.KeepOpen()
-            };
+            //var downloadCommandResult = isLiveResult ? CommandResult.Confirm(new ConfirmationArgs()
+            //{
+            //    IsPrimaryCommandCritical = true,
+            //    PrimaryCommand = new AnonymousCommand(async () =>
+            //    {
+            //        await _ytDlp.TryExecuteDownloadAsync(
+            //                queryURL,
+            //                _downloadBanner,
+            //                videoTitle,
+            //                formatId,
+            //                isLive: isLive ?? false,
+            //                onStart: onDownloadStart,
+            //                onFinish: onDownloadFinished,
+            //                onAlreadyDownloaded: onAlreadyDownloaded,
+            //                cancellationToken: _token.Token
+            //            );
+            //    })
+            //    {
+            //        Name = $"Download ({settings.GetSelectedVideoOutputFormat})",
+            //        Icon = new IconInfo("\uE896"),
+            //    },
+            //    Title = "Warning",
+            //    Description = "Live streaming is not fully supported, a new window will open and begin the download. YOU HAVE TO INTERRUPT THE PROCESS YOURSELF (With Ctrl+C) in order to stop the download."
+            //}) : CommandResult.KeepOpen();
 
-            Command = startDownloadCommand;
+            if (isLiveVideo)
+            {
+                Command = new AnonymousCommand(() =>
+                {
+                    // Apenas exibe a confirmação, não inicia o download direto
+                })
+                {
+                    Name = "Download (Live)",
+                    Icon = new IconInfo("\uE896"),
+                    Result = CommandResult.Confirm(new ConfirmationArgs
+                    {
+                        Title = "Aviso",
+                        Description = "O download de livestreams não é totalmente suportado. Uma nova janela será aberta e você deverá encerrá-la manualmente (Ctrl+C) para finalizar o download.",
+                        IsPrimaryCommandCritical = true,
+                        PrimaryCommand = new AnonymousCommand(async () =>
+                        {
+                            await _ytDlp.TryExecuteDownloadAsync(
+                                queryURL,
+                                _downloadBanner,
+                                videoTitle,
+                                videoFormatObject.FormatID!,
+                                isLive: true,
+                                onStart: onDownloadStart,
+                                onFinish: onDownloadFinished,
+                                onAlreadyDownloaded: onAlreadyDownloaded,
+                                cancellationToken: _token.Token
+                            );
+                        })
+                        {
+                            Name = $"Iniciar Download ({settings.GetSelectedVideoOutputFormat})",
+                            Icon = new IconInfo("\uE896"),
+                            Result = CommandResult.KeepOpen()
+                        }
+                    })
+                };
+            }
+            else
+            {
+                startDownloadCommand = new AnonymousCommand(async () =>
+                {
+                    await _ytDlp.TryExecuteDownloadAsync(
+                            queryURL,
+                            _downloadBanner,
+                            videoTitle,
+                            formatId,
+                            isLive: isLive ?? false,
+                            onStart: onDownloadStart,
+                            onFinish: onDownloadFinished,
+                            onAlreadyDownloaded: onAlreadyDownloaded,
+                            cancellationToken: _token.Token
+                        );
+                })
+                {
+                    Name = $"Download ({settings.GetSelectedVideoOutputFormat})",
+                    Icon = new IconInfo("\uE896"),
+                    Result = CommandResult.KeepOpen()
+                };
 
+                Command = startDownloadCommand;
+            }
 
         }
 
-        public VideoFormatListItem(ICommand command)
-        {
-            Command = command;
-        }
+        public VideoFormatListItem(ICommand command) => Command = command;
 
         /// <summary>
         /// This Constructor handles the case where a video does not have a format list, but only a single format.
@@ -193,7 +259,7 @@ namespace YtDlpExtension.Pages
             _videoTitle = videoTitle;
             _thumbnail = thumbnail;
             var formatId = videoSingleFormat.FormatID ?? "";
-            var resolution = videoSingleFormat.resolution ?? "";
+            var resolution = videoSingleFormat.Resolution ?? "";
             var ext = videoSingleFormat.Extension ?? "";
 
             List<Tag> _tags = [
@@ -285,6 +351,7 @@ namespace YtDlpExtension.Pages
                         _downloadBanner,
                         videoTitle,
                         formatId,
+                        isLive: videoSingleFormat.IsLive ?? false,
                         onStart: onDownloadStart,
                         onFinish: onDownloadFinished,
                         onAlreadyDownloaded: onAlreadyDownloaded,
@@ -314,7 +381,7 @@ namespace YtDlpExtension.Pages
                 >= 640 => "360p",
                 >= 426 => "240p",
                 >= 256 => "144p",
-                _ => $"{width}x{height}"
+                _ => width.HasValue && height.HasValue ? $"{width}x{height}" : string.Empty
             };
         }
 
@@ -329,15 +396,15 @@ namespace YtDlpExtension.Pages
             return null;
         }
 
-        private Details? BuildDetails(string videoTitle, string thumbnail, VideoData videoFormatObject)
+        private static Details? BuildDetails(string videoTitle, string thumbnail, VideoData videoFormatObject)
         {
             var formatId = videoFormatObject.FormatID ?? "";
-            var resolution = videoFormatObject.resolution ?? "";
-            var vcodec = videoFormatObject.vcodec ?? "";
-            var acodec = videoFormatObject.acodec ?? "";
+            var resolution = videoFormatObject.Resolution ?? "";
+            var vcodec = videoFormatObject.VCodec ?? "";
+            var acodec = videoFormatObject.ACodec ?? "";
             var ext = videoFormatObject.Extension ?? "";
-            var filesizeBytes = videoFormatObject.filesize
-                  ?? videoFormatObject.filesize_approx;
+            var filesizeBytes = videoFormatObject.Filesize
+                  ?? videoFormatObject.FilesizeApprox;
             double sizeInMB = 0d;
             if (filesizeBytes != null) sizeInMB = filesizeBytes.Value / (1024.0 * 1024.0);
 
@@ -369,28 +436,28 @@ namespace YtDlpExtension.Pages
                 Metadata = detailsElements.ToArray(),
             };
         }
-        private Details? BuildDetails(string videoTitle, string thumbnail, Format videoFormatObject = null, VideoData videoSingleFormat = null)
+        private static Details? BuildDetails(string videoTitle, string thumbnail, Format? videoFormatObject = null, VideoData? videoSingleFormat = null)
         {
             string formatId, resolution, vcodec, acodec, ext = string.Empty;
             long? filesizeBytes = null;
             if (videoFormatObject == null)
             {
-                formatId = videoSingleFormat.FormatID ?? "";
-                resolution = videoSingleFormat.resolution ?? "";
-                vcodec = videoSingleFormat.vcodec ?? "";
-                acodec = videoSingleFormat.acodec ?? "";
-                ext = videoSingleFormat.Extension ?? "";
-                filesizeBytes = videoSingleFormat.filesize
-                      ?? videoSingleFormat.filesize_approx;
+                formatId = videoSingleFormat?.FormatID ?? "";
+                resolution = videoSingleFormat?.Resolution ?? "";
+                vcodec = videoSingleFormat?.VCodec ?? "";
+                acodec = videoSingleFormat?.ACodec ?? "";
+                ext = videoSingleFormat?.Extension ?? "";
+                filesizeBytes = videoSingleFormat?.Filesize
+                      ?? videoSingleFormat?.FilesizeApprox;
             }
 
-            formatId = videoFormatObject.format_id ?? "";
-            resolution = videoFormatObject.resolution ?? "";
-            vcodec = videoFormatObject.vcodec ?? "";
-            acodec = videoFormatObject.acodec ?? "";
-            ext = videoFormatObject.ext ?? "";
-            filesizeBytes = videoFormatObject.filesize
-                  ?? videoFormatObject.filesize_approx;
+            formatId = videoFormatObject?.FormatID ?? "";
+            resolution = videoFormatObject?.Resolution ?? "";
+            vcodec = videoFormatObject?.VCodec ?? "";
+            acodec = videoFormatObject?.ACodec ?? "";
+            ext = videoFormatObject?.Ext ?? "";
+            filesizeBytes = videoFormatObject?.Filesize
+                  ?? videoFormatObject?.FilesizeApprox;
 
             double sizeInMB = 0d;
             if (filesizeBytes != null) sizeInMB = filesizeBytes.Value / (1024.0 * 1024.0);
@@ -428,12 +495,6 @@ namespace YtDlpExtension.Pages
         public void Dispose()
         {
             ((IDisposable)_token).Dispose();
-        }
-
-        public object Clone()
-        {
-            var clonnedVideoItem = new VideoFormatListItem(VideoUrl, _videoTitle, _thumbnail, _videoData, _ytDlp, _settings);
-            return clonnedVideoItem;
         }
     }
 }

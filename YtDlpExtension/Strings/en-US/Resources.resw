@@ -133,8 +133,17 @@ Provide the cookies file in the Settings page to proceed.</value>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} already downloaded</value>
   </data>
+  <data name="AppMode" xml:space="preserve">
+    <value>Application mode</value>
+  </data>
   <data name="AudioOutputFormat" xml:space="preserve">
     <value>Audio Output Format</value>
+  </data>
+  <data name="AutoDownload" xml:space="preserve">
+    <value>Auto-start download</value>
+  </data>
+  <data name="AutoDownloadDescription" xml:space="preserve">
+    <value>Downloads the video on paste (Only when Custom Format Selector is set)</value>
   </data>
   <data name="BestAvailable" xml:space="preserve">
     <value>Best available</value>
@@ -150,6 +159,9 @@ Provide the cookies file in the Settings page to proceed.</value>
   </data>
   <data name="Confirm" xml:space="preserve">
     <value>Confirm</value>
+  </data>
+  <data name="CookiesFile" xml:space="preserve">
+    <value>cookies.txt file location</value>
   </data>
   <data name="CustomFormatSelector" xml:space="preserve">
     <value>Custom Format Selector</value>
@@ -179,8 +191,7 @@ Provide the cookies file in the Settings page to proceed.</value>
     <value>Downloading subtitle: {0}</value>
   </data>
   <data name="EmptyContentTiltle" xml:space="preserve">
-    <value>Paste an URL to download the video.
-Start with @ for audio only.</value>
+    <value>Paste an URL to start.</value>
   </data>
   <data name="EmptyDataYtDlp" xml:space="preserve">
     <value>No data received from yt-dlp</value>
@@ -203,8 +214,14 @@ Start with @ for audio only.</value>
   <data name="FetchingPlaylistTitle" xml:space="preserve">
     <value>Fetching playlist data</value>
   </data>
+  <data name="Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
   <data name="FormatId" xml:space="preserve">
     <value>Format ID</value>
+  </data>
+  <data name="Formats" xml:space="preserve">
+    <value>Formatos</value>
   </data>
   <data name="InQueue" xml:space="preserve">
     <value>In Queue</value>
@@ -220,6 +237,13 @@ Start with @ for audio only.</value>
   </data>
   <data name="MissingTitle" xml:space="preserve">
     <value>Missing Title</value>
+  </data>
+  <data name="Modes" xml:space="preserve">
+    <value>Simple: Few formats focused on compatibility instead of quality (default)
+Advanced: All formats are available.</value>
+  </data>
+  <data name="NewWindowOpen" xml:space="preserve">
+    <value>Process running on external window</value>
   </data>
   <data name="PlaceholderText" xml:space="preserve">
     <value>Paste a video URL</value>

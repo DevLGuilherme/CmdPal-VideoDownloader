@@ -51,13 +51,14 @@ namespace YtDlpExtension.Helpers
         public string GetSettingsAudioOutputFormat() => _settings.GetSelectedAudioOutputFormat;
         public static bool IsValidUrl(string url)
         {
-            var regexPattern = @"^(https?|ftp):\/\/[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+(\/[^\s]*)?$";
+            var regexPattern = @"^(https?|ftp):\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$";
             return Regex.IsMatch(url.Trim(), regexPattern, RegexOptions.IgnoreCase);
         }
 
         private async Task<Command> ExecuteDownloadProcessAsync(
             ProcessStartInfo psi,
             StatusMessage downloadBanner,
+            bool isLive,
             Action<string>? onOutputData = null,
             Action<string>? onErrorData = null,
             Action? onStart = null,
@@ -68,7 +69,6 @@ namespace YtDlpExtension.Helpers
         {
 
             using var downloadProcess = new Process { StartInfo = psi };
-
             bool isCancelled = false;
             bool alreadyDownloaded = false;
 
@@ -119,18 +119,22 @@ namespace YtDlpExtension.Helpers
             {
                 onStart?.Invoke();
                 downloadProcess.Start();
+
+                if (!isLive)
+                {
+                    downloadProcess.BeginOutputReadLine();
+                    downloadProcess.BeginErrorReadLine();
+                    downloadBanner.UpdateState(DownloadState.Extracting);
+                }
                 downloadBanner.ShowStatus();
-                downloadProcess.BeginOutputReadLine();
-                downloadProcess.BeginErrorReadLine();
-                downloadBanner.UpdateState(DownloadState.Extracting);
                 using (cancellationToken.Register(() =>
                 {
                     try
                     {
                         if (!downloadProcess.HasExited)
                         {
-                            downloadProcess.Kill(entireProcessTree: true);
                             isCancelled = true;
+                            downloadProcess.Kill(true);
                         }
                     }
                     catch { /* Ignored */ }
@@ -149,7 +153,7 @@ namespace YtDlpExtension.Helpers
                         var filepath = ExtractDownloadPath(psi);
                         try
                         {
-                            Process.Start("explorer.exe", $"/select,\"{filepath}\"");
+                            Process.Start("explorer.exe", $"\"{filepath}\"");
                         }
                         catch
                         {
@@ -157,7 +161,8 @@ namespace YtDlpExtension.Helpers
                         }
                     })
                     {
-                        Name = "Open in folder"
+                        Name = "ShowOutputDir".ToLocalized(),
+                        Result = CommandResult.KeepOpen()
                     };
 
                     onFinish?.Invoke(showInExplorerCommand);
@@ -350,6 +355,7 @@ namespace YtDlpExtension.Helpers
             return await ExecuteDownloadProcessAsync(
                 psi,
                 downloadBanner,
+                false,
                 onOutputData: (data) =>
                 {
                     SetTitle(data);
@@ -391,6 +397,7 @@ namespace YtDlpExtension.Helpers
             string endTime = "",
             string audioFormatId = "bestaudio",
             bool audioOnly = false,
+            bool isLive = false,
             Action? onStart = null,
             Action<Command>? onFinish = null,
             Action? onAlreadyDownloaded = null,
@@ -399,7 +406,15 @@ namespace YtDlpExtension.Helpers
         {
             var customFormatSelector = _settings.GetCustomFormatSelector;
             onStart?.Invoke();
-            downloadBanner.UpdateState(DownloadState.Extracting);
+            if (isLive)
+            {
+                downloadBanner.UpdateState(DownloadState.CustomMessage, "NewWindowOpen".ToLocalized(), true);
+            }
+
+            else
+            {
+                downloadBanner.UpdateState(DownloadState.Extracting);
+            }
             var downloadPath = GetSettingsDownloadPath();
 
             var arguments = new List<string>
@@ -431,7 +446,7 @@ namespace YtDlpExtension.Helpers
                 {
                     arguments.Add($"\"{customFormatSelector}\"");
                 }
-                else if (_settings.GetSelectedMode == "simple")
+                else if (_settings.GetSelectedMode == ExtensionMode.SIMPLE)
                 {
                     arguments.Add($"\"{videoFormatId}+bestaudio[acodec!=opus]/{videoFormatId}+ba/{videoFormatId}/best\"");
                 }
@@ -452,14 +467,15 @@ namespace YtDlpExtension.Helpers
 
             var argumentsFinal = string.Join(" ", arguments);
 
+            var shouldRedirect = isLive ? false : true;
             var psi = new ProcessStartInfo
             {
                 FileName = "yt-dlp",
                 Arguments = argumentsFinal,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                RedirectStandardOutput = shouldRedirect,
+                RedirectStandardError = shouldRedirect,
                 UseShellExecute = false,
-                CreateNoWindow = true,
+                CreateNoWindow = shouldRedirect,
             };
 
             using var downloadProcess = new Process { StartInfo = psi };
@@ -468,6 +484,7 @@ namespace YtDlpExtension.Helpers
             return await ExecuteDownloadProcessAsync(
                 psi,
                 downloadBanner,
+                isLive,
                 onOutputData: (data) =>
                 {
                     //SetTitle(data);
@@ -574,6 +591,7 @@ namespace YtDlpExtension.Helpers
             return await ExecuteDownloadProcessAsync(
                 psi,
                 downloadBanner,
+                false,
                 onOutputData: data =>
                 {
                     var progressMatch = Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%", RegexOptions.IgnoreCase);
