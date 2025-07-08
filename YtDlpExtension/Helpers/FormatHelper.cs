@@ -9,8 +9,7 @@ namespace YtDlpExtension.Helpers
     {
         public static bool IsAudio(VideoFormatListItem item)
         {
-            return item.Title.Contains("audio", StringComparison.OrdinalIgnoreCase)
-                || item.Tags.Any(tag => tag.Text.Contains("audio", StringComparison.OrdinalIgnoreCase));
+            return item.Title.Contains("audio", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsVideo(VideoFormatListItem item)
@@ -21,7 +20,7 @@ namespace YtDlpExtension.Helpers
         public static Format[] OrderByResolution(Format[]? formats)
         {
             return formats?
-                .OrderByDescending(format => format.height)
+                .OrderByDescending(format => format.Height)
                 .ToArray() ?? [];
         }
 
@@ -29,10 +28,10 @@ namespace YtDlpExtension.Helpers
         {
             return formats == null ? Array.Empty<Format>() :
                 formats
-                .Where(f => f.height != null)
-                .OrderByDescending(f => f.height)
-                .ThenByDescending(f => f.tbr)
-                .GroupBy(f => f.height)
+                .Where(f => f.Height != null)
+                .OrderByDescending(f => f.Height)
+                .ThenByDescending(f => f.TBR)
+                .GroupBy(f => f.Height)
                 .Select(g => g.First())
                 .ToArray();
         }

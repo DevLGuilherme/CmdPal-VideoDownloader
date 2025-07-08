@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 using YtDlpExtension.Converters;
 
 namespace YtDlpExtension.Metada
 {
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties)]
 
     public record VideoData
     {
@@ -201,67 +203,67 @@ namespace YtDlpExtension.Metada
         public int? asr { get; set; }
         [JsonPropertyName("filesize")]
         [JsonConverter(typeof(FlexibleLongConverter))]
-        public long? filesize { get; set; }
+        public long? Filesize { get; set; }
         [JsonPropertyName("format_note")]
-        public string? format_note { get; set; }
+        public string? FormatNote { get; set; }
         [JsonPropertyName("source_preference")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? source_preference { get; set; }
+        public int? SourcePreference { get; set; }
         [JsonPropertyName("fps")]
-        public object? fps { get; set; }
+        public object? FPS { get; set; }
         [JsonPropertyName("audio_channels")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? audio_channels { get; set; }
+        public int? AudioChannels { get; set; }
         [JsonPropertyName("height")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? height { get; set; }
+        public int? Height { get; set; }
         [JsonPropertyName("quality")]
-        public float? quality { get; set; }
+        public float? Quality { get; set; }
         [JsonPropertyName("has_drm")]
-        public bool? has_drm { get; set; }
+        public bool? HasDRM { get; set; }
         [JsonPropertyName("tbr")]
-        public float? tbr { get; set; }
+        public float? TBR { get; set; }
         [JsonPropertyName("filesize_approx")]
         [JsonConverter(typeof(FlexibleLongConverter))]
-        public long? filesize_approx { get; set; }
+        public long? FilesizeApprox { get; set; }
         [JsonPropertyName("width")]
         [JsonConverter(typeof(FlexibleIntConverter))]
 
-        public int? width { get; set; }
+        public int? Width { get; set; }
         [JsonPropertyName("language")]
-        public object? language { get; set; }
+        public object? Language { get; set; }
         [JsonPropertyName("language_preference")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? language_preference { get; set; }
+        public int? LanguagePreference { get; set; }
         [JsonPropertyName("preference")]
-        public object? preference { get; set; }
+        public object? Preference { get; set; }
         [JsonPropertyName("vcodec")]
-        public string? vcodec { get; set; }
+        public string? VCodec { get; set; }
         [JsonPropertyName("acodec")]
-        public string? acodec { get; set; }
+        public string? ACodec { get; set; }
         [JsonPropertyName("dynamic_range")]
-        public object? dynamic_range { get; set; }
+        public object? DynamicRange { get; set; }
         [JsonPropertyName("container")]
-        public string? container { get; set; }
+        public string? Container { get; set; }
         [JsonPropertyName("downloader_options")]
-        public Downloader_Options? downloader_options { get; set; }
+        public DownloaderOptions? DownloaderOptions { get; set; }
         [JsonPropertyName("protocol")]
-        public string? protocol { get; set; }
+        public string? Protocol { get; set; }
         [JsonPropertyName("audio_ext")]
-        public string? audio_ext { get; set; }
+        public string? AudioExt { get; set; }
         [JsonPropertyName("video_ext")]
-        public string? video_ext { get; set; }
+        public string? VideoExt { get; set; }
         [JsonPropertyName("vbr")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? vbr { get; set; }
+        public int? VBR { get; set; }
         [JsonPropertyName("abr")]
-        public float? abr { get; set; }
+        public float? ABR { get; set; }
         [JsonPropertyName("resolution")]
-        public string? resolution { get; set; }
+        public string? Resolution { get; set; }
         [JsonPropertyName("aspect_ratio")]
-        public object? aspect_ratio { get; set; }
+        public object? AspectRatio { get; set; }
         [JsonPropertyName("http_headers")]
-        public Http_Headers? http_headers { get; set; }
+        public HttpHeaders? HttpHeaders { get; set; }
     }
 
     public class CommentData
@@ -310,86 +312,89 @@ namespace YtDlpExtension.Metada
         public string? id { get; set; }
     }
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties)]
+
     public class Format
     {
         [JsonPropertyName("asr")]
-        public int? asr { get; set; }
+        public int? ASR { get; set; }
         [JsonPropertyName("filesize")]
         [JsonConverter(typeof(FlexibleLongConverter))]
-        public long? filesize { get; set; }
+        public long? Filesize { get; set; }
         [JsonPropertyName("format_id")]
-        public string? format_id { get; set; }
+        public string? FormatID { get; set; }
         [JsonPropertyName("format_note")]
-        public string? format_note { get; set; }
+        public string? FormatNote { get; set; }
         [JsonPropertyName("source_preference")]
-        public int? source_preference { get; set; }
+        public int? SourcePreference { get; set; }
         [JsonPropertyName("fps")]
-        public object? fps { get; set; }
+        public object? FPS { get; set; }
         [JsonPropertyName("audio_channels")]
-        public int? audio_channels { get; set; }
+        public int? AudioChannels { get; set; }
         [JsonPropertyName("height")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? height { get; set; }
+        public int? Height { get; set; }
         [JsonPropertyName("quality")]
-        public float? quality { get; set; }
+        public float? Quality { get; set; }
         [JsonPropertyName("has_drm")]
-        public bool? has_drm { get; set; }
+        public bool? HasDRM { get; set; }
         [JsonPropertyName("tbr")]
-        public float? tbr { get; set; }
+        public float? TBR { get; set; }
         [JsonPropertyName("filesize_approx")]
         [JsonConverter(typeof(FlexibleLongConverter))]
-        public long? filesize_approx { get; set; }
+        public long? FilesizeApprox { get; set; }
         [JsonPropertyName("url")]
-        public string? url { get; set; }
+        public string? Url { get; set; }
         [JsonPropertyName("width")]
         [JsonConverter(typeof(FlexibleIntConverter))]
 
-        public int? width { get; set; }
+        public int? Width { get; set; }
         [JsonPropertyName("language")]
-        public object? language { get; set; }
+        public object? Language { get; set; }
         [JsonPropertyName("language_preference")]
-        public int? language_preference { get; set; }
+        public int? LanguagePreference { get; set; }
         [JsonPropertyName("preference")]
-        public object? preference { get; set; }
+        public object? Preference { get; set; }
         [JsonPropertyName("ext")]
-        public string? ext { get; set; }
+        public string? Ext { get; set; }
         [JsonPropertyName("vcodec")]
-        public string? vcodec { get; set; }
+        public string? VCodec { get; set; }
         [JsonPropertyName("acodec")]
-        public string? acodec { get; set; }
+        public string? ACodec { get; set; }
         [JsonPropertyName("dynamic_range")]
-        public object? dynamic_range { get; set; }
+        public object? DynamicRange { get; set; }
         [JsonPropertyName("container")]
-        public string? container { get; set; }
+        public string? Container { get; set; }
         [JsonPropertyName("downloader_options")]
-        public Downloader_Options? downloader_options { get; set; }
+        public DownloaderOptions? DownloaderOptions { get; set; }
         [JsonPropertyName("protocol")]
-        public string? protocol { get; set; }
+        public string? Protocol { get; set; }
         [JsonPropertyName("audio_ext")]
-        public string? audio_ext { get; set; }
+        public string? AudioExt { get; set; }
         [JsonPropertyName("video_ext")]
-        public string? video_ext { get; set; }
+        public string? VideoExt { get; set; }
         [JsonPropertyName("vbr")]
         [JsonConverter(typeof(FlexibleIntConverter))]
-        public int? vbr { get; set; }
+        public int? VBR { get; set; }
         [JsonPropertyName("abr")]
-        public float? abr { get; set; }
+        public float? ABR { get; set; }
         [JsonPropertyName("resolution")]
-        public string? resolution { get; set; }
+        public string? Resolution { get; set; }
         [JsonPropertyName("aspect_ratio")]
-        public object? aspect_ratio { get; set; }
+        public object? AspectRatio { get; set; }
         [JsonPropertyName("http_headers")]
-        public Http_Headers? http_headers { get; set; }
+        public HttpHeaders? HttpHeaders { get; set; }
         [JsonPropertyName("format")]
-        public string? format { get; set; }
+        public string? FormatInfo { get; set; }
     }
 
-    public class Downloader_Options
+    public class DownloaderOptions
     {
-        public int? http_chunk_size { get; set; }
+        [JsonPropertyName("http_chunk_size")]
+        public int? HttpChunkSize { get; set; }
     }
 
-    public class Http_Headers
+    public class HttpHeaders
     {
         public string? UserAgent { get; set; }
         public string? Accept { get; set; }
@@ -399,26 +404,27 @@ namespace YtDlpExtension.Metada
 
     public class SubtitleData
     {
-        public string? ext { get; set; }
-        public string? url { get; set; }
-        public string? format { get; set; }
-        public string? __yt_dlp_client { get; set; }
+        public string? Ext { get; set; }
+        public string? Url { get; set; }
+        public string? Format { get; set; }
+        [JsonPropertyName("__yt_dlp_client")]
+        public string? YtDlpClient { get; set; }
     }
 
-    public class Subtitle : Dictionary<string, SubtitleData[]>
+    public partial class Subtitle : Dictionary<string, SubtitleData[]>
     {
     }
 
-    public class AutomaticCaptions : Dictionary<string, SubtitleData[]>
+    public partial class AutomaticCaptions : Dictionary<string, SubtitleData[]>
     {
     }
 
-    public class _Version
+    public class VersionInfo
     {
-        public string? version { get; set; }
-        public object? current_git_head { get; set; }
-        public string? release_git_head { get; set; }
-        public string? repository { get; set; }
+        public string? Version { get; set; }
+        public object? CurrentGitHead { get; set; }
+        public string? ReleaseGitHead { get; set; }
+        public string? Repository { get; set; }
     }
 
     public enum MetadataType

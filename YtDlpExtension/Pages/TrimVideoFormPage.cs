@@ -2,6 +2,7 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using YtDlpExtension.Helpers;
@@ -13,12 +14,13 @@ namespace YtDlpExtension.Pages
     {
         private readonly SettingsManager _settings;
         private readonly VideoData _videoData;
+        private List<VideoFormatListItem> _selectedFormats;
         private readonly DownloadHelper _ytDlp;
         private readonly Format _formatData;
         private readonly string _url;
         private readonly Action<CancellationTokenSource> _onSubmit;
 
-        public TrimVideoFormPage(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit = null)
+        public TrimVideoFormPage(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, List<VideoFormatListItem> selectedFormats, Action<CancellationTokenSource> onSubmit = null)
         {
             _settings = settings;
             _videoData = videoData;
@@ -26,7 +28,8 @@ namespace YtDlpExtension.Pages
             _formatData = formatData;
             _url = queryUrl;
             _onSubmit = onSubmit;
-            Icon = new IconInfo("\uf0c7");
+            _selectedFormats = selectedFormats;
+            Icon = new IconInfo("\ue8c6");
 
         }
 
@@ -35,7 +38,7 @@ namespace YtDlpExtension.Pages
             return [
                 new TreeContent
                 {
-                    RootContent = new TrimVideoFormContent(_url, _settings, _videoData, _formatData, _ytDlp, _onSubmit),
+                    RootContent = new TrimVideoFormContent(_url, _settings, _videoData, _formatData, _ytDlp, _selectedFormats, _onSubmit),
                     Children = []
                 }
             ];
@@ -46,12 +49,13 @@ namespace YtDlpExtension.Pages
     {
         private readonly SettingsManager _settings;
         private VideoData _videoData = new();
+        private List<VideoFormatListItem> _selectedFormats;
         private readonly string _url;
         private Format _formatData = new();
         private readonly DownloadHelper _ytDlp;
         private readonly Action<CancellationTokenSource> _onSubmit;
 
-        public TrimVideoFormContent(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit = null)
+        public TrimVideoFormContent(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, List<VideoFormatListItem> selectedFormats, Action<CancellationTokenSource> onSubmit = null)
         {
             _settings = settings;
             _ytDlp = ytDlp;
@@ -59,17 +63,22 @@ namespace YtDlpExtension.Pages
             _videoData = videoData;
             _formatData = formatData;
             _url = queryUrl;
-            long filesize = formatData.filesize ?? 0;
-            float bitrate = formatData.tbr ?? 0;
+            _selectedFormats = selectedFormats;
+            long filesize = formatData.Filesize ?? 0;
+            float bitrate = formatData.TBR ?? 0;
             var duration = videoData.Duration != null ? TimeSpan.FromSeconds(videoData.Duration ?? 0) : GetDurationFromSizeAndBitrate(filesize, bitrate);
             var formattedDuration = duration.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
             var endTime = formattedDuration;
+            var resolution = (selectedFormats.Count > 1) switch
+            {
+                true => $"{"Formats".ToLocalized()}: {selectedFormats[0].GetFormatData?.FormatID}+{selectedFormats[1].GetFormatData?.FormatID}",
+                _ => $"{"Format".ToLocalized()}: {formatData.Resolution}" ?? "any",
+            };
             var dataJson = $$"""
                     {
                         "videoTitle": "{{videoData.Title}}",
                         "thumbnail": "{{videoData.Thumbnail}}",
-                        "resolution": "{{formatData.resolution}}",
-                        "formatId": "{{_formatData.format_id}}"
+                        "formatId": "{{_formatData.FormatID}}"
                     }
                 """;
             var templateJson = $$"""
@@ -85,12 +94,13 @@ namespace YtDlpExtension.Pages
                         "fontType": "Default"
                     },
                     {
-                        "type": "TextBlock",
-                        "text": "${resolution} ${formatId}",
-                        "wrap": true,
-                        "weight": "Bolder",
-                        "size": "Default",
-                        "fontType": "Default"
+                        "type": "RichTextBlock",
+                        "inlines": [
+                            {
+                                "type": "TextRun",
+                                "text": "{{resolution}}"
+                            }
+                        ]
                     },
                     {
                         "type": "ColumnSet",
@@ -200,7 +210,7 @@ namespace YtDlpExtension.Pages
                 }
             }
 
-            var videoFormatId = _formatData.format_id ?? string.Empty; // Ensure videoFormatId is not null to avoid warnings
+            var videoFormatId = _formatData.FormatID ?? string.Empty; // Ensure videoFormatId is not null to avoid warnings
 
             if (string.IsNullOrEmpty(videoFormatId))
             {

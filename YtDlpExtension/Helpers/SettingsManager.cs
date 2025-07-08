@@ -3,6 +3,14 @@ using System.IO;
 
 namespace YtDlpExtension.Helpers
 {
+
+    static class ExtensionMode
+    {
+        public const string SIMPLE = "simple";
+        public const string ADVANCED = "advanced";
+    }
+
+
     public class SettingsManager : JsonSettingsManager
     {
         private readonly TextSetting _downloadLocation = new("downloadLocation", DownloadHelper.GetDefaultDownloadPath())
@@ -18,14 +26,14 @@ namespace YtDlpExtension.Helpers
 
 
         private readonly ChoiceSetSetting _mode = new("mode", [
-                new ChoiceSetSetting.Choice("Simple", "simple"),
-                new ChoiceSetSetting.Choice("Advanced", "advanced"),
+                new ChoiceSetSetting.Choice("Simple", ExtensionMode.SIMPLE),
+                new ChoiceSetSetting.Choice("Advanced", ExtensionMode.ADVANCED),
             ])
         {
-            Value = "simple",
-            Description = "Simple: Prefer compatibility instead of quality (default)\nAdvanced: Prefer maximum quality and disable codec filtering",
+            Value = ExtensionMode.SIMPLE,
+            Description = "Modes".ToLocalized(),
             IsRequired = true,
-            Label = "Download Mode"
+            Label = "AppMode".ToLocalized()
         };
 
         private readonly ChoiceSetSetting _videoOutputFormats = new("videoOutputFormats", [
@@ -71,14 +79,14 @@ namespace YtDlpExtension.Helpers
 
         private readonly ToggleSetting _downloadOnPaste = new("downloadOnPaste", false)
         {
-            Label = "Download on Paste",
-            Description = "Downloads the video on paste (Only when Custom Format Selector is set)",
-            ErrorMessage = "Custom Format Selector can't be empty"
+            Label = "AutoDownload".ToLocalized(),
+            Description = "AutoDownloadDescription".ToLocalized(),
+            ErrorMessage = "Custom Format Selector can't be empty",
         };
 
         private readonly TextSetting _cookiesFileLocation = new("cookiesFileLocation", string.Empty)
         {
-            Label = "cookies.txt file location",
+            Label = "CookiesFile".ToLocalized(),
             Description = "cookies.txt file location"
         };
 
@@ -87,7 +95,7 @@ namespace YtDlpExtension.Helpers
         public string GetSelectedVideoOutputFormat => _videoOutputFormats.Value ?? "mp4";
         public string GetSelectedAudioOutputFormat => _audioOutputFormats.Value ?? "mp3";
         public string GetCookiesFile => _cookiesFileLocation.Value ?? string.Empty;
-        public string GetSelectedMode => _mode.Value ?? "simple";
+        public string GetSelectedMode => _mode.Value ?? ExtensionMode.SIMPLE;
         public bool GetDownloadOnPaste => _downloadOnPaste.Value;
         public string GetCustomFormatSelector => _customFormatSelector.Value ?? string.Empty;
         internal static string SettingsJsonPath()
@@ -115,7 +123,6 @@ namespace YtDlpExtension.Helpers
             {
                 SaveSettings();
             }
-
             Settings.SettingsChanged += (s, a) => this.SaveSettings();
         }
     }
