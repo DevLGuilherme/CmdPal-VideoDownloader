@@ -54,7 +54,35 @@ namespace YtDlpExtension.Pages
 
             if (_settings.GetSelectedMode == ExtensionMode.ADVANCED)
             {
+
+
                 _tags.Add(new Tag(formatId));
+
+
+                if (videoFormatObject.Resolution!.Contains("audio only") && videoFormatObject.FormatNote != null)
+                {
+
+                    var isDubbed = (videoFormatObject.FormatNote is var format && format.Contains("dubbed")) switch
+                    {
+                        true => format.Contains("auto") switch
+                        {
+                            true => new Tag("Dubbed-Auto"),
+                            _ => new Tag("Dubbed")
+                        },
+                        _ => format.Contains("original") switch
+                        {
+                            true => new Tag("original"),
+                            _ => null
+                        }
+                    };
+
+                    if (isDubbed != null)
+                    {
+                        _tags.Add(isDubbed);
+                    }
+
+                }
+
                 _tags.Add(new Tag(ext)
                 {
                     Background = new OptionalColor(true, new Color(accentColor.R, accentColor.G, accentColor.B, accentColor.A)),
@@ -97,7 +125,14 @@ namespace YtDlpExtension.Pages
             }
             else
             {
-                Title = resolution;
+                if (videoFormatObject.Resolution!.Contains("audio only") && videoFormatObject.Language != null)
+                {
+                    Title = $"{resolution} ({FormatHelper.TryGetNativeName(videoFormatObject.Language)})";
+                }
+                else
+                {
+                    Title = resolution;
+                }
             }
 
             Icon = new IconInfo("\uE896");
@@ -400,6 +435,7 @@ namespace YtDlpExtension.Pages
         {
             var formatId = videoFormatObject.FormatID ?? "";
             var resolution = videoFormatObject.Resolution ?? "";
+            var formatNote = videoFormatObject.FormatNote ?? "";
             var vcodec = videoFormatObject.VCodec ?? "";
             var acodec = videoFormatObject.ACodec ?? "";
             var ext = videoFormatObject.Extension ?? "";
@@ -411,6 +447,7 @@ namespace YtDlpExtension.Pages
             List<IDetailsElement> detailsElements = [];
             Dictionary<string, string> formatData = new()
             {
+                { "Format".ToLocalized(), formatNote },
                 { "Resolution".ToLocalized(), resolution },
                 { "Size".ToLocalized(), $"{sizeInMB:F2}" },
                 { "Extension".ToLocalized(), ext },
@@ -438,20 +475,22 @@ namespace YtDlpExtension.Pages
         }
         private static Details? BuildDetails(string videoTitle, string thumbnail, Format? videoFormatObject = null, VideoData? videoSingleFormat = null)
         {
-            string formatId, resolution, vcodec, acodec, ext = string.Empty;
+            string formatId, formatNote, resolution, vcodec, acodec, ext = string.Empty;
             long? filesizeBytes = null;
-            if (videoFormatObject == null)
-            {
-                formatId = videoSingleFormat?.FormatID ?? "";
-                resolution = videoSingleFormat?.Resolution ?? "";
-                vcodec = videoSingleFormat?.VCodec ?? "";
-                acodec = videoSingleFormat?.ACodec ?? "";
-                ext = videoSingleFormat?.Extension ?? "";
-                filesizeBytes = videoSingleFormat?.Filesize
-                      ?? videoSingleFormat?.FilesizeApprox;
-            }
+            //if (videoFormatObject == null)
+            //{
+            //    formatId = videoSingleFormat?.FormatID ?? "";
+            //    formatNote = videoSingleFormat?.FormatNote ?? "";
+            //    resolution = videoSingleFormat?.Resolution ?? "";
+            //    vcodec = videoSingleFormat?.VCodec ?? "";
+            //    acodec = videoSingleFormat?.ACodec ?? "";
+            //    ext = videoSingleFormat?.Extension ?? "";
+            //    filesizeBytes = videoSingleFormat?.Filesize
+            //          ?? videoSingleFormat?.FilesizeApprox;
+            //}
 
             formatId = videoFormatObject?.FormatID ?? "";
+            formatNote = videoFormatObject?.FormatNote ?? "";
             resolution = videoFormatObject?.Resolution ?? "";
             vcodec = videoFormatObject?.VCodec ?? "";
             acodec = videoFormatObject?.ACodec ?? "";
@@ -465,12 +504,13 @@ namespace YtDlpExtension.Pages
             List<IDetailsElement> detailsElements = [];
             Dictionary<string, string> formatData = new()
             {
+                { "Format".ToLocalized(), formatNote },
                 { "Resolution".ToLocalized(), resolution },
+                { "VCodec".ToLocalized(), vcodec},
+                { "ACodec".ToLocalized(), acodec },
                 { "Size".ToLocalized(), $"{sizeInMB:F2}" },
                 { "Extension".ToLocalized(), ext },
                 { "FormatId".ToLocalized(), formatId },
-                { "VCodec".ToLocalized(), vcodec},
-                { "ACodec".ToLocalized(), acodec },
             };
 
             foreach (var data in formatData)

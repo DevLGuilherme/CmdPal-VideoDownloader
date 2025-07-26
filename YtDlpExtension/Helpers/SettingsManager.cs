@@ -70,6 +70,7 @@ namespace YtDlpExtension.Helpers
             Value = "mp3"
         };
 
+
         private readonly TextSetting _customFormatSelector = new("customFormatSelector", string.Empty)
         {
             Label = "CustomFormatSelector".ToLocalized(),

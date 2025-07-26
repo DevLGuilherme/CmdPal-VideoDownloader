@@ -2,14 +2,13 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using YtDlpExtension.Helpers;
 using YtDlpExtension.Metada;
 
 namespace YtDlpExtension.Pages
 {
-    internal class SubtitlesPage : ListPage
+    public class SubtitlesPage : ListPage
     {
         private List<ListItem> _items = new();
         private readonly Subtitle _subtitles = new();
@@ -28,33 +27,6 @@ namespace YtDlpExtension.Pages
             Name = "ListAutoCaptions".ToLocalized();
         }
 
-        private static string TryGetNativeName(string code)
-        {
-            string Fallback(string c) =>
-                c.Equals("live_chat", StringComparison.OrdinalIgnoreCase) ? "Live Chat Replay" : c;
-            try
-            {
-                if (CultureInfo.GetCultures(CultureTypes.AllCultures)
-                    .Any(c => c.Name.Equals(code, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return new CultureInfo(code).NativeName;
-                }
-                else
-                {
-                    return code.Equals("live_chat", StringComparison.OrdinalIgnoreCase)
-                        ? "Live Chat Replay"
-                        : code;
-                }
-            }
-            catch
-            {
-                // Ignored
-            }
-
-            return Fallback(code);
-        }
-
-
         public override IListItem[] GetItems()
         {
             if (string.IsNullOrEmpty(_videoUrl) || _subtitles == null || !_subtitles.Any())
@@ -69,7 +41,7 @@ namespace YtDlpExtension.Pages
             _items.Clear();
             foreach (var subtitle in _subtitles)
             {
-                string title = TryGetNativeName(subtitle.Key);
+                string title = FormatHelper.TryGetNativeName(subtitle.Key);
 
                 var key = subtitle.Key;
                 _items.Add(new ListItem(new AnonymousCommand(async () =>

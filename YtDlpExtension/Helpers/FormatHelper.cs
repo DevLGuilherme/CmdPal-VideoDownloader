@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using YtDlpExtension.Metada;
 using YtDlpExtension.Pages;
@@ -34,6 +35,33 @@ namespace YtDlpExtension.Helpers
                 .GroupBy(f => f.Height)
                 .Select(g => g.First())
                 .ToArray();
+        }
+
+
+        public static string TryGetNativeName(string code)
+        {
+            string Fallback(string c) =>
+                c.Equals("live_chat", StringComparison.OrdinalIgnoreCase) ? "Live Chat Replay" : c;
+            try
+            {
+                if (CultureInfo.GetCultures(CultureTypes.AllCultures)
+                    .Any(c => c.Name.Equals(code, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return new CultureInfo(code).NativeName;
+                }
+                else
+                {
+                    return code.Equals("live_chat", StringComparison.OrdinalIgnoreCase)
+                        ? "Live Chat Replay"
+                        : code;
+                }
+            }
+            catch
+            {
+                // Ignored
+            }
+
+            return Fallback(code);
         }
     }
 }

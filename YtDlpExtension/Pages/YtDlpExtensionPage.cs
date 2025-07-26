@@ -51,21 +51,14 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             Icon = _ytDlpIcon,
             Title = "EmptyContentTiltle".ToLocalized(),
             Subtitle = $"{_settingsManager.GetSelectedMode} mode",
-            MoreCommands = [new CommandContextItem(
-                    "Open folder",
-                    "Open selected download folder",
-                    "Open folder",
-                    () => {
-                        var psi = new ProcessStartInfo();
-                        psi.FileName = @"c:\windows\explorer.exe";
-                        psi.Arguments = _settingsManager.DownloadLocation;
-                        using var process = Process.Start(psi);
-                        process?.WaitForExit();
-                    },
-                    CommandResult.KeepOpen()
-                ){
-
-            }]
+            MoreCommands = [
+                new CommandContextItem(ShowOutputDirCommand(_settingsManager.DownloadLocation)),
+                new CommandContextItem(_settingsManager.Settings.SettingsPage){
+                    Title = "Settings".ToLocalized(),
+                    Subtitle = "Configure the video downloader settings",
+                    Icon = new IconInfo("\uE713"),
+                },
+            ]
         };
         _ytDlp.TitleUpdated += title => Title = title;
         _ytDlp.LoadingChanged += loading => IsLoading = loading;

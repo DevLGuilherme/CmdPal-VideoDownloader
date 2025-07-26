@@ -350,7 +350,7 @@ namespace YtDlpExtension.Metada
 
         public int? Width { get; set; }
         [JsonPropertyName("language")]
-        public object? Language { get; set; }
+        public string? Language { get; set; }
         [JsonPropertyName("language_preference")]
         public int? LanguagePreference { get; set; }
         [JsonPropertyName("preference")]
