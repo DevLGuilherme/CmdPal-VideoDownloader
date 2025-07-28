@@ -8,7 +8,7 @@ using YtDlpExtension.Metada;
 
 namespace YtDlpExtension.Pages
 {
-    public class SubtitlesPage : ListPage
+    public partial class SubtitlesPage : ListPage
     {
         private List<ListItem> _items = new();
         private readonly Subtitle _subtitles = new();

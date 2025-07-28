@@ -1,4 +1,5 @@
 ﻿using Microsoft.CommandPalette.Extensions.Toolkit;
+using System.Diagnostics;
 using System.IO;
 
 namespace YtDlpExtension.Helpers
@@ -11,14 +12,74 @@ namespace YtDlpExtension.Helpers
     }
 
 
+
+
     public class SettingsManager : JsonSettingsManager
     {
+
+        public static (bool, string) IsYtDlpBinaryAvailable()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "yt-dlp",
+                    Arguments = "--version",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var process = Process.Start(psi);
+                process?.BeginOutputReadLine();
+                var version = string.Empty;
+                process!.OutputDataReceived += (sender, args) =>
+                {
+                    if (args.Data != null)
+                    {
+                        version = args.Data;
+                    }
+                };
+
+                process?.WaitForExit(2000);
+                return (process?.ExitCode == 0, version);
+            }
+            catch
+            {
+                return (false, "0");
+            }
+        }
+
+        public static bool IsFFmpegBinaryAvailable()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = "-version",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var process = Process.Start(psi);
+                process?.WaitForExit(2000);
+                return process?.ExitCode == 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private readonly TextSetting _downloadLocation = new("downloadLocation", DownloadHelper.GetDefaultDownloadPath())
         {
             Label = "DownloadDirectory".ToLocalized(),
             Description = "DownloadDirectory".ToLocalized(),
             IsRequired = true,
         };
+
         private readonly ToggleSetting _recodeVideo = new("recodeVideo", false)
         {
             Description = "Always recode video (Increases time but ensures compatibility)"

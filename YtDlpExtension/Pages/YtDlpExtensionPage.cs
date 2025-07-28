@@ -46,11 +46,28 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         Name = "Open";
         PlaceholderText = "PlaceholderText".ToLocalized();
         ShowDetails = true;
+
+
+        //if (!_settingsManager.YtDlpChecked || !_settingsManager.FfmpegChecked)
+        //{
+        //    _ytDlpIcon = new IconInfo("\uE946");
+        //    Title = "YtDlpNotAvailable".ToLocalized();
+        //    PlaceholderText = "YtDlpNotAvailableMessage".ToLocalized();
+        //}
+        var (isAvailable, ytDlpVersion) = SettingsManager.IsYtDlpBinaryAvailable();
+        if (!isAvailable)
+        {
+            PlaceholderText = "YtDlpMissingTitle".ToLocalized();
+            HandleError("YtDlpMissingTitle".ToLocalized(), "YtDlpMissingDescription".ToLocalized());
+            return;
+        }
+
+        Title = $"Video Downloader (yt-dlp version: {ytDlpVersion})";
         EmptyContent = new CommandItem(new NoOpCommand())
         {
             Icon = _ytDlpIcon,
             Title = "EmptyContentTiltle".ToLocalized(),
-            Subtitle = $"{_settingsManager.GetSelectedMode} mode",
+            Subtitle = _settingsManager.GetSelectedMode == ExtensionMode.ADVANCED ? $"{_settingsManager.GetSelectedMode} mode" : string.Empty,
             MoreCommands = [
                 new CommandContextItem(ShowOutputDirCommand(_settingsManager.DownloadLocation)),
                 new CommandContextItem(_settingsManager.Settings.SettingsPage){
@@ -373,7 +390,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
 
         //The form page will be set after the data from the playlist is fetched
-        var listItem = new VideoFormatListItem(new NoOpCommand())
+        var listItem = new VideoFormatListItem(new NoOpCommand(), _ytDlp, _settingsManager)
         {
             Tags = [new Tag("Playlist")],
             Icon = new IconInfo("\uE895"),

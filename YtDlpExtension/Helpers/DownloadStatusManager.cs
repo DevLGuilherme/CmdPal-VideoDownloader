@@ -22,7 +22,7 @@ namespace YtDlpExtension.Helpers
     {
         private static readonly ConditionalWeakTable<StatusMessage, DownloadStatusState> _states = new();
 
-        private class DownloadStatusState
+        private sealed class DownloadStatusState
         {
             public DownloadState CurrentState { get; set; } = DownloadState.CustomMessage;
             public int UpdateVersion { get; set; }

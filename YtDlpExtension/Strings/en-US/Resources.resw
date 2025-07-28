@@ -297,4 +297,12 @@ Provide the cookies file in the Settings page to proceed.</value>
   <data name="VideoResolution" xml:space="preserve">
     <value>Video resolution</value>
   </data>
+  <data name="YtDlpMissingDescription" xml:space="preserve">
+    <value>yt-dlp must be installed
+Install the latest version of yt-dlp and reload all extensions to start using.
+(Tip: winget install yt-dlp.yt-dlp)</value>
+  </data>
+  <data name="YtDlpMissingTitle" xml:space="preserve">
+    <value>YT-DLP was not found</value>
+  </data>
 </root>

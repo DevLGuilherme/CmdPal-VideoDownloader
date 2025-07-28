@@ -271,7 +271,12 @@ namespace YtDlpExtension.Pages
 
         }
 
-        public VideoFormatListItem(ICommand command) => Command = command;
+        public VideoFormatListItem(ICommand command, DownloadHelper ytDlp, SettingsManager settings)
+        {
+            Command = command;
+            _ytDlp = ytDlp;
+            _settings = settings;
+        }
 
         /// <summary>
         /// This Constructor handles the case where a video does not have a format list, but only a single format.

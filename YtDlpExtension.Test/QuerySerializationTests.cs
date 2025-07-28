@@ -29,7 +29,7 @@ namespace YtDlpExtension.Test
                 Assert.False(string.IsNullOrEmpty(videoData?.Thumbnail));
                 Assert.True(videoData.Formats?.Length > 0, videoData.Formats.ToString());
 
-                Console.WriteLine("\n\nABC NEWS Formats: " + string.Join(", ", videoData.Formats?.Select(f => f?.FormatID)));
+                Console.WriteLine("\n\nABC NEWS Formats: " + string.Join(", ", videoData.Formats?.Select(f => f?.FormatID)!));
             }
             catch { }
         }
