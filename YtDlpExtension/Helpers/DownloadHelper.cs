@@ -21,6 +21,8 @@ namespace YtDlpExtension.Helpers
         public event Func<List<VideoFormatListItem>>? RequestActiveDownloads;
 
         private readonly SettingsManager _settings;
+        public bool IsAvailable { get; set; }
+        public string Version { get; set; }
 
         private DateTime _lastThrottle = DateTime.MinValue;
         private readonly object _throttleLock = new();
@@ -53,6 +55,81 @@ namespace YtDlpExtension.Helpers
         {
             var regexPattern = @"^(https?|ftp):\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$";
             return Regex.IsMatch(url.Trim(), regexPattern, RegexOptions.IgnoreCase);
+        }
+
+        public async Task<Command> TryDownloadYtDlpWingetAsync(StatusMessage downloadBanner, CancellationToken cancellationToken = default)
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "winget",
+                    Arguments = "install yt-dlp.yt-dlp",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+            bool isCancelled = false;
+            bool alreadyDownloaded = false;
+
+
+            downloadBanner.UpdateState(DownloadState.Extracting, isIndeterminate: true);
+            downloadBanner.ShowStatus();
+            process.OutputDataReceived += (sender, args) =>
+            {
+                if (args.Data != null)
+                {
+                    Throttle((data) =>
+                    {
+                        downloadBanner.UpdateState(DownloadState.Downloading, args.Data, true);
+                    }, args.Data, 100);
+                }
+
+            };
+
+            try
+            {
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                using (cancellationToken.Register(() =>
+                {
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            isCancelled = true;
+                            process.Kill(true);
+                        }
+                    }
+                    catch { /* Ignored */ }
+                }))
+                {
+                    await process.WaitForExitAsync(cancellationToken);
+                }
+
+                if (!isCancelled && process.ExitCode == 0 && !alreadyDownloaded)
+                {
+                    SetTitle($"✅ {"Downloaded".ToLocalized()}");
+                    downloadBanner.UpdateState(DownloadState.Finished);
+
+                }
+                else if (isCancelled)
+                {
+                    SetTitle($"⛔ {"Cancelled".ToLocalized()}");
+                    downloadBanner.UpdateState(DownloadState.Cancelled);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                downloadBanner.UpdateState(DownloadState.Cancelled);
+                return null;
+            }
+
+            return new Command();
         }
 
         private async Task<Command> ExecuteDownloadProcessAsync(

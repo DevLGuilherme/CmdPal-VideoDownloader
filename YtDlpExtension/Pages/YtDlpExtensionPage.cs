@@ -44,25 +44,28 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         Icon = _ytDlpIcon;
         Title = "Video Downloader";
         Name = "Open";
-        PlaceholderText = "PlaceholderText".ToLocalized();
         ShowDetails = true;
+        ReloadExtensionState();
+        _ytDlp.TitleUpdated += title => Title = title;
+        _ytDlp.LoadingChanged += loading => IsLoading = loading;
+        _ytDlp.ItemsChanged += count => RaiseItemsChanged(count);
+        _ytDlp.RequestActiveDownloads += GetActiveDownloads;
+
+    }
 
 
-        //if (!_settingsManager.YtDlpChecked || !_settingsManager.FfmpegChecked)
-        //{
-        //    _ytDlpIcon = new IconInfo("\uE946");
-        //    Title = "YtDlpNotAvailable".ToLocalized();
-        //    PlaceholderText = "YtDlpNotAvailableMessage".ToLocalized();
-        //}
-        var (isAvailable, ytDlpVersion) = SettingsManager.IsYtDlpBinaryAvailable();
-        if (!isAvailable)
+    private void ReloadExtensionState()
+    {
+        //var (isAvailable, ytDlpVersion) = SettingsManager.IsYtDlpBinaryAvailable();
+
+        if (!_ytDlp.IsAvailable)
         {
             PlaceholderText = "YtDlpMissingTitle".ToLocalized();
-            HandleError("YtDlpMissingTitle".ToLocalized(), "YtDlpMissingDescription".ToLocalized());
+            HandleMissingYtDlpError();
             return;
         }
-
-        Title = $"Video Downloader (yt-dlp version: {ytDlpVersion})";
+        PlaceholderText = "PlaceholderText".ToLocalized();
+        Title = $"Video Downloader (yt-dlp version: {_ytDlp.Version})";
         EmptyContent = new CommandItem(new NoOpCommand())
         {
             Icon = _ytDlpIcon,
@@ -70,22 +73,20 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             Subtitle = _settingsManager.GetSelectedMode == ExtensionMode.ADVANCED ? $"{_settingsManager.GetSelectedMode} mode" : string.Empty,
             MoreCommands = [
                 new CommandContextItem(ShowOutputDirCommand(_settingsManager.DownloadLocation)),
-                new CommandContextItem(_settingsManager.Settings.SettingsPage){
-                    Title = "Settings".ToLocalized(),
-                    Subtitle = "Configure the video downloader settings",
-                    Icon = new IconInfo("\uE713"),
-                },
-            ]
+            new CommandContextItem(_settingsManager.Settings.SettingsPage){
+                Title = "Settings".ToLocalized(),
+                Subtitle = "Configure the video downloader settings",
+                Icon = new IconInfo("\uE713"),
+            },
+        ]
         };
-        _ytDlp.TitleUpdated += title => Title = title;
-        _ytDlp.LoadingChanged += loading => IsLoading = loading;
-        _ytDlp.ItemsChanged += count => RaiseItemsChanged(count);
-        _ytDlp.RequestActiveDownloads += GetActiveDownloads;
         UpdateSearchText(string.Empty, string.Empty);
+        RaiseItemsChanged(_itens.Count);
     }
 
     public override async void UpdateSearchText(string oldSearch, string newSearch)
     {
+        if (!_ytDlp.IsAvailable) return;
 
         try
         {
@@ -701,6 +702,39 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             Icon = icon ?? new IconInfo("\uE946"),
             Title = title,
             Subtitle = message
+        };
+    }
+
+    private void HandleMissingYtDlpError()
+    {
+        IsLoading = false;
+        var downloadBanner = new StatusMessage();
+        var cts = new CancellationTokenSource();
+        var installYtDlpWinget = new AnonymousCommand(async () =>
+        {
+            await _ytDlp.TryDownloadYtDlpWingetAsync(downloadBanner, cts.Token);
+            if (downloadBanner.CurrentState() == DownloadState.Finished)
+            {
+
+                var (isAvailable, version) = SettingsManager.IsYtDlpBinaryAvailable();
+                _ytDlp.IsAvailable = isAvailable;
+                _ytDlp.Version = version;
+                ReloadExtensionState();
+            }
+        })
+        {
+            Name = "InstallYtDlpWinget".ToLocalized(),
+            Icon = new IconInfo("\uE946"),
+            Result = CommandResult.KeepOpen()
+        };
+
+
+        EmptyContent = new CommandItem()
+        {
+            Icon = new IconInfo("\uE946"),
+            Title = "YtDlpMissingTitle".ToLocalized(),
+            Subtitle = "YtDlpMissingDescription".ToLocalized(),
+            Command = installYtDlpWinget,
         };
     }
 

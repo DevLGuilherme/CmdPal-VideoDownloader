@@ -12,10 +12,9 @@ public partial class YtDlpExtensionCommandsProvider : CommandProvider
 {
     private readonly ICommandItem[] _commands;
     private readonly IconInfo _logoIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
-
-
     private static SettingsManager _settings = new();
     private DownloadHelper _ytDlp = new(_settings);
+
     public YtDlpExtensionCommandsProvider()
     {
 
@@ -23,6 +22,12 @@ public partial class YtDlpExtensionCommandsProvider : CommandProvider
         Settings = _settings.Settings;
         var settingsPage = _settings.Settings.SettingsPage;
         Icon = _logoIcon;
+        var (isAvailable, version) = SettingsManager.IsYtDlpBinaryAvailable();
+        if (isAvailable && version != "0")
+        {
+            _ytDlp.IsAvailable = isAvailable;
+            _ytDlp.Version = version;
+        }
         _commands = [
             new CommandItem(new YtDlpExtensionPage(_settings, _ytDlp))
             {

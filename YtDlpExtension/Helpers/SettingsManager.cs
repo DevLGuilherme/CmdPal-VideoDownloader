@@ -31,8 +31,8 @@ namespace YtDlpExtension.Helpers
                     CreateNoWindow = true
                 };
                 using var process = Process.Start(psi);
-                process?.BeginOutputReadLine();
-                var version = string.Empty;
+                var version = process?.StandardOutput.ReadToEnd().TrimEnd() ?? "";
+                //var version = string.Empty;
                 process!.OutputDataReceived += (sender, args) =>
                 {
                     if (args.Data != null)
@@ -41,7 +41,7 @@ namespace YtDlpExtension.Helpers
                     }
                 };
 
-                process?.WaitForExit(2000);
+                process?.WaitForExitAsync();
                 return (process?.ExitCode == 0, version);
             }
             catch

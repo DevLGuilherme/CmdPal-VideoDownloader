@@ -226,6 +226,9 @@ Provide the cookies file in the Settings page to proceed.</value>
   <data name="InQueue" xml:space="preserve">
     <value>In Queue</value>
   </data>
+  <data name="InstallYtDlpWinget" xml:space="preserve">
+    <value>Install yt-dlp (winget)</value>
+  </data>
   <data name="ListAutoCaptions" xml:space="preserve">
     <value>Auto Captions</value>
   </data>
