@@ -1,20 +1,24 @@
 <div align="center">
      <img src="YtDlpExtension/Assets/StoreLogo.scale-100.png" alt="Logo"/>
      <div><h1>  Video Downloader<br><p>For PowerToys</p></h1><br></div>
+     <b >A Command Palette extension for downloading videos and playlists using yt-dlp</b>
 </div>
+
+
+
 <div align="center">     
-<img src="Images/SneakPeek.png" style="width: 900px" alt="SneakPeek"/>
+<img src="Images/SneakPeek.png" style="width: 900px;" alt="SneakPeek"/>
 </div>
 
 
-# 📝 Note
-This extension is currently in development, and a release will be out soon.
-
+> [!NOTE]
+> This extension is currently in development, and is my first experience with the language.\
+> Bugs are expected
 
 
 # 🚀 Effortless Video Downloads with PowerToys!
-Download videos, audios, and playlists directly from the Command Palette with ease.\
-Easily download videos, audios, playlists, and (soon™) captions directly within PowerToys Command Palette using yt-dlp.
+Download and trim videos, audios, playlists, captions and subtitles directly from the PowerToys Command Palette using yt-dlp.
+
 # ✨ Key Features
 - Download videos from hundreds of websites ([supported websites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)).
 - Simplified management: Choose output directories, set formats, and monitor progress directly from the interface.
@@ -25,21 +29,88 @@ Easily download videos, audios, playlists, and (soon™) captions directly withi
 - Captions and subtitles: Download auto-captions or subtitles from a video 
 - Customized output format and merging support
 - Quick merging using yt-dlp's format selector expressions
+- Partial Livestream download support
+
+# 📦 Requirements
+1. **PowerToys v0.90 or later**  
+   Install with:
+   ```powershell
+   winget install "Microsoft.PowerToys"
+   ```
+2. yt-dlp (any version, recommended: `Latest`)
+   
+> [!NOTE]
+> If yt-dlp is not installed, the extension will show an error message and offer an option to `Install yt-dlp (winget)`\
+> You can also install it manually:
+```powershell
+winget install "yt-dlp.yt-dlp"
+```
+
 
 # ⚙️ Settings
-- **Download location:** the destination directory to download (default: `User Downloads folder`)
-- **Video Output format:** the output format (Container) of all downloaded videos (default: `mp4`)
-- **Audio Output format:** the output format of all downloaded audios (default: `mp3`)
-- **Custom format selector:** sets a custom yt-dlp [format selector expression string](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection). If a custom string is set, the audio and video output setting will be ignored (default: `blank`)\
-(**It's recommended to leave this field blank if you don't need a specific video or audio codec**)\
-Editing software like `Premiere`, `After Effects`, `DaVinci Resolve`, may not recognize videos encoded with `VP9` or `AV1`, prefer videos encoded with `AVC1` for broader compatibility.
+- `Mode`: Two modes are available **`Simple`** and **`Advanced`** (default: `Simple`)
+- `Download location:` the destination directory to download (default: `User Downloads folder`)
+- `Video Output format:` the output format (Container) of all downloaded videos (default: `mp4`)
+- `Audio Output format:` the output format of all downloaded audios (default: `mp3`)
+- `Custom format selector:` sets a custom yt-dlp [format selector expression string](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection). If a custom string is set, the audio and video output setting will be ignored. (default: `blank`)
+- `Download on Paste:` When a custom format selector is set, and this option is checked, the download will start automatically when pasting an URL. (default `unchecked`)
+- `cookies.txt file location:` the location of your [exported cookies](https://github.com/DevLGuilherme/CmdPal-VideoDownloader/edit/main/README.md#cookies) file. (default: `blank`)
+> [!TIP]
+> **Leave `Custom format selector` blank if you don't need a specific video or audio codec**\
+> Editing software like `Premiere`, `After Effects`, `DaVinci Resolve`, may not recognize videos encoded with `VP9` or `AV1`, prefer videos encoded with `AVC1` for broader compatibility.
 
-# 🚨 Known Issues
- - **Download Speeds:**\
- Download speeds may be slower than expected for some sites and formats, especially for larger files. This extension does not implement any additional download acceleration mechanisms beyond those provided by yt-dlp. 
- Some users have reported that passing browser cookies to yt-dlp improves download speeds (details below).
- - **Age restricted videos:**\
- Currently, downloading age-restricted or login-protected videos is not supported by this extension. yt-dlp typically requires additional configuration, such as account authentication or cookies, to access such content. There will be a settings option in the future to select cookies from browser to pass to yt-dlp, ...however, this involves certain risks you should be aware of.
+
+# 🕹️ Modes
+
+## 🍃 Simple
+> [!TIP]
+> Download videos without worrying with codecs. (**This mode will always prefer compatibility over quality**)
+
+It will only show available resolutions, making it easier to download without worrying about the technical details of the video.
+
+## 🛠️ Advanced
+This mode has all the features enabled such as QuickMerge and the full list of available formats and metadata of each format.
+
+# 👉 How to use
+
+### Playlist
+1. Paste an `YouTube Playlist URL` or a `Videos Tab URL` from a channel.
+2. Wait the data to be fetched (can take longer depending of the playlist video count).
+3. Click the first item on the list `Download full playlist`
+4. On the Playlist Download Page, you can:
+     - Select a resolution (if available for the video).
+     - Set the start and end video.
+     - Check if you want just the audio.
+     - Or set a custom format selector by clicking `Advanced Options`
+5. Click `Download` to start
+    
+### QuickMerge
+- Once the list of available formats appears, you can select the formats you want to merge using the format ID present in each item in the list, typed in the URL input. For example `299+140-drc`. 
+- Alternatively, you can select a video and an audio using the `Select Command` in the `Context menu` button (3 dots).
+> [!NOTE]
+> This feature will only work if you select exactly one video format and one audio format
+
+### Video Trimming
+- Select any video format from the list, click the 3 dots on the bottom right and select `Trim Video`.\
+- Set the start and end times (hh:mm:ss) and click `download`.\
+**This yt-dlp feature will basically watch the video and most of the time it will take the same amount of time to complete the download.**
+> [!TIP]
+> In `Advanced Mode` you can make a custom selection by selecting 1 audio and 1 video with the `Select Command` before clicking `Trim Video`
+
+### Captions and Subtitles
+- If available for the video, both options will be displayed on the `Context menu` on the bottom right.
+
+### Livestreams
+Currently, there's a partial support for livestreams.
+1. Paste and Livestream URL
+2. Select the format and click download
+3. You'll be prompted with a message saying that a terminal window will open.
+4. The download will start and you have to manually interrupt the process with a <kbd>Ctrl</kbd> + <kbd>C</kbd> to close the file
+
+### Cookies
+Since `--cookies-from-browser` flag is not working on Windows ([see](https://github.com/yt-dlp/yt-dlp/issues/10927)),
+the only way to download videos that require authentication, is to export and pass a `cookies.txt` file to yt-dlp, [here is how to do it](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
+
 
 # 🤝 Contributing
 
@@ -47,7 +118,9 @@ This is my first open source project, so I'm especially open to feedback, ideas,
 Feel free to share suggestions or improvements!
 
 # 💼 TODO
-- [ ] Fully implement QuickMerge feature
-- [ ] Implement the trimming form page
-- [ ] Implement captions and subtitle download
+- [x] Fully implement QuickMerge feature
+- [x] Implement the trimming form page
+- [x] Implement captions and subtitle download
+- [ ] Code clean-up
+- [ ] Refactor and Restructure
 - [ ] Add a context command to download the video thumbnail
