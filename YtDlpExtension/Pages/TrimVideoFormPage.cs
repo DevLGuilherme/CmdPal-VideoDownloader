@@ -10,7 +10,7 @@ using YtDlpExtension.Metada;
 
 namespace YtDlpExtension.Pages
 {
-    public class TrimVideoFormPage : ContentPage
+    public partial class TrimVideoFormPage : ContentPage
     {
         private readonly SettingsManager _settings;
         private readonly VideoData _videoData;
@@ -18,9 +18,9 @@ namespace YtDlpExtension.Pages
         private readonly DownloadHelper _ytDlp;
         private readonly Format _formatData;
         private readonly string _url;
-        private readonly Action<CancellationTokenSource> _onSubmit;
+        private readonly Action<CancellationTokenSource>? _onSubmit;
 
-        public TrimVideoFormPage(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, List<VideoFormatListItem> selectedFormats, Action<CancellationTokenSource> onSubmit = null)
+        public TrimVideoFormPage(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, List<VideoFormatListItem> selectedFormats, Action<CancellationTokenSource>? onSubmit = null)
         {
             _settings = settings;
             _videoData = videoData;
@@ -45,7 +45,7 @@ namespace YtDlpExtension.Pages
         }
     }
 
-    public class TrimVideoFormContent : FormContent
+    public partial class TrimVideoFormContent : FormContent
     {
         private readonly SettingsManager _settings;
         private VideoData _videoData = new();
@@ -53,9 +53,9 @@ namespace YtDlpExtension.Pages
         private readonly string _url;
         private Format _formatData = new();
         private readonly DownloadHelper _ytDlp;
-        private readonly Action<CancellationTokenSource> _onSubmit;
+        private readonly Action<CancellationTokenSource>? _onSubmit;
 
-        public TrimVideoFormContent(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, List<VideoFormatListItem> selectedFormats, Action<CancellationTokenSource> onSubmit = null)
+        public TrimVideoFormContent(string queryUrl, SettingsManager settings, VideoData videoData, Format formatData, DownloadHelper ytDlp, List<VideoFormatListItem> selectedFormats, Action<CancellationTokenSource>? onSubmit = null)
         {
             _settings = settings;
             _ytDlp = ytDlp;
@@ -210,7 +210,12 @@ namespace YtDlpExtension.Pages
                 }
             }
 
-            var videoFormatId = _formatData.FormatID ?? string.Empty; // Ensure videoFormatId is not null to avoid warnings
+            var (videoFormatId, audioFormatId) = (_selectedFormats.Count > 1) switch
+            {
+                true => (_selectedFormats[0].GetFormatData!.FormatID ?? string.Empty,
+                         _selectedFormats[1].GetFormatData!.FormatID ?? "bestaudio"),
+                _ => (_formatData.FormatID ?? string.Empty, "bestaudio")
+            };
 
             if (string.IsNullOrEmpty(videoFormatId))
             {
@@ -228,7 +233,8 @@ namespace YtDlpExtension.Pages
                 _videoData.Title ?? "MissingTitle".ToLocalized(),
                 videoFormatId,
                 startTime,
-                endTime
+                endTime,
+                audioFormatId
             );
 
             return CommandResult.GoBack();
