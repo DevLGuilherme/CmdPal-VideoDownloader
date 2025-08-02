@@ -22,7 +22,7 @@ namespace YtDlpExtension.Helpers
 
         private readonly SettingsManager _settings;
         public bool IsAvailable { get; set; }
-        public string Version { get; set; }
+        public string? Version { get; set; }
 
         private DateTime _lastThrottle = DateTime.MinValue;
         private readonly object _throttleLock = new();
@@ -57,7 +57,7 @@ namespace YtDlpExtension.Helpers
             return Regex.IsMatch(url.Trim(), regexPattern, RegexOptions.IgnoreCase);
         }
 
-        public async Task<Command> TryDownloadYtDlpWingetAsync(StatusMessage downloadBanner, CancellationToken cancellationToken = default)
+        public async Task<Command?> TryDownloadYtDlpWingetAsync(StatusMessage downloadBanner, CancellationToken cancellationToken = default)
         {
             using var process = new Process
             {
@@ -132,7 +132,7 @@ namespace YtDlpExtension.Helpers
             return new Command();
         }
 
-        private async Task<Command> ExecuteDownloadProcessAsync(
+        private async Task<Command?> ExecuteDownloadProcessAsync(
             ProcessStartInfo psi,
             StatusMessage downloadBanner,
             bool isLive,
@@ -543,7 +543,9 @@ namespace YtDlpExtension.Helpers
             arguments.Add($"\"{url}\"");
 
             var argumentsFinal = string.Join(" ", arguments);
-
+            //var debugBanner = new StatusMessage();
+            //debugBanner.UpdateState(DownloadState.CustomMessage, argumentsFinal, true);
+            //debugBanner.ShowStatus();
             var shouldRedirect = isLive ? false : true;
             var psi = new ProcessStartInfo
             {
@@ -622,7 +624,7 @@ namespace YtDlpExtension.Helpers
             );
         }
 
-        public async Task<Command> TryExecuteSubtitleDownloadAsync(
+        public async Task<Command?> TryExecuteSubtitleDownloadAsync(
             string url,
             string subtitleKey,
             StatusMessage downloadBanner,
@@ -698,7 +700,9 @@ namespace YtDlpExtension.Helpers
         }
 
 
+#pragma warning disable CA1822 // Marcar membros como estáticos
         public async Task<JObject> ExtractPlaylistDataAsync(string url, Action<JObject>? onFinish = null)
+#pragma warning restore CA1822 // Marcar membros como estáticos
         {
             var psi = new ProcessStartInfo
             {

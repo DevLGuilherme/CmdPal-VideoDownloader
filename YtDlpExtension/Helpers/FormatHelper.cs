@@ -20,8 +20,22 @@ namespace YtDlpExtension.Helpers
 
         public static Format[] OrderByResolution(Format[]? formats)
         {
+
+            //if (formats == null)
+            //    return Array.Empty<Format>();
+
+            //var videoFormats = formats
+            //    .Where(f => f != null && f.Height.HasValue)
+            //    .OrderByDescending(f => f.Height!.Value);
+
+            //var outros = formats
+            //    .Where(f => f != null && !videoFormats.Contains(f));
+
+
+            //return videoFormats.Concat(outros).ToArray();
+
             return formats?
-                .OrderByDescending(format => format.Height)
+                .OrderByDescending(format => format.Height ?? -1)
                 .ToArray() ?? [];
         }
 

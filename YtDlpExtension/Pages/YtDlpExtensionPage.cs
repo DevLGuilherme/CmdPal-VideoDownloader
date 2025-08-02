@@ -316,7 +316,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
             if (isPlaylistURL)
             {
-                ApplyPlaylistData(videoData!);
+                ApplyPlaylistData(videoData);
                 RaiseItemsChanged(1);
             }
 
@@ -525,13 +525,13 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
             if (formatObject != null)
             {
-                var formatListItem = new VideoFormatListItem(queryUrl, videoData?.Title!, videoData?.Thumbnail!, formatObject, _ytDlp, _settingsManager, isLive: videoData!.IsLive);
+                var formatListItem = new VideoFormatListItem(queryUrl, videoData?.Title, videoData?.Thumbnail, formatObject, _ytDlp, _settingsManager, isLive: videoData?.IsLive);
                 var moreCommands = formatListItem.MoreCommands.ToList();
 
 
-                if (videoData.IsLive == false)
+                if (videoData?.IsLive == false || videoData?.IsLive == null)
                 {
-                    var trimVideoForm = new TrimVideoFormPage(queryUrl, _settingsManager, videoData!, format, _ytDlp, _selectedItems);
+                    var trimVideoForm = new TrimVideoFormPage(queryUrl, _settingsManager, videoData, format, _ytDlp, _selectedItems);
                     var trimVideoCommand = new CommandContextItem(trimVideoForm)
                     {
                         Icon = new IconInfo("\ue8c6"),

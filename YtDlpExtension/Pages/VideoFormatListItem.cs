@@ -47,19 +47,17 @@ namespace YtDlpExtension.Pages
             var formatId = videoFormatObject.FormatID ?? "";
             // var resolution = (_settings.GetSelectedMode == "simple" ? GetResolutionCategory(videoFormatObject.width, videoFormatObject.height) : videoFormatObject.resolution) ?? "";
             var resolution = videoFormatObject.Resolution ?? "";
-            var resolutionCategory = GetResolutionCategory(videoFormatObject.Width, videoFormatObject.Height);
             var ext = videoFormatObject.Ext ?? "";
 
-            List<Tag> _tags = [];
+            List<Tag> _tags = new();
 
             if (_settings.GetSelectedMode == ExtensionMode.ADVANCED)
             {
 
-
                 _tags.Add(new Tag(formatId));
 
 
-                if (videoFormatObject.Resolution!.Contains("audio only") && videoFormatObject.FormatNote != null)
+                if (videoFormatObject.Resolution != null && videoFormatObject.Resolution.Contains("audio only") && videoFormatObject.FormatNote != null)
                 {
 
                     var isDubbed = (videoFormatObject.FormatNote is var format && format.Contains("dubbed")) switch
@@ -90,7 +88,7 @@ namespace YtDlpExtension.Pages
                 });
             }
 
-            List<IContextItem> _commands = [];
+            List<IContextItem> _commands = new();
 
             var downloadAudioTitle = "DownloadAudio".ToLocalized(_settings.GetSelectedAudioOutputFormat);
             var audioOnlyContextItem = new CommandContextItem(
@@ -121,11 +119,11 @@ namespace YtDlpExtension.Pages
 
             if (_settings.GetSelectedMode == ExtensionMode.SIMPLE)
             {
-                Title = resolutionCategory;
+                Title = GetResolutionCategory(videoFormatObject.Width, videoFormatObject.Height); ;
             }
             else
             {
-                if (videoFormatObject.Resolution!.Contains("audio only") && videoFormatObject.Language != null)
+                if (videoFormatObject.Resolution != null && videoFormatObject.Resolution.Contains("audio only") && videoFormatObject.Language != null)
                 {
                     Title = $"{resolution} ({FormatHelper.TryGetNativeName(videoFormatObject.Language)})";
                 }
@@ -438,12 +436,12 @@ namespace YtDlpExtension.Pages
 
         private static Details? BuildDetails(string videoTitle, string thumbnail, VideoData videoFormatObject)
         {
-            var formatId = videoFormatObject.FormatID ?? "";
-            var resolution = videoFormatObject.Resolution ?? "";
-            var formatNote = videoFormatObject.FormatNote ?? "";
-            var vcodec = videoFormatObject.VCodec ?? "";
-            var acodec = videoFormatObject.ACodec ?? "";
-            var ext = videoFormatObject.Extension ?? "";
+            var formatId = videoFormatObject.FormatID ?? string.Empty;
+            var resolution = videoFormatObject.Resolution ?? string.Empty;
+            var formatNote = videoFormatObject.FormatNote ?? string.Empty;
+            var vcodec = videoFormatObject.VCodec ?? string.Empty;
+            var acodec = videoFormatObject.ACodec ?? string.Empty;
+            var ext = videoFormatObject.Extension ?? string.Empty;
             var filesizeBytes = videoFormatObject.Filesize
                   ?? videoFormatObject.FilesizeApprox;
             double sizeInMB = 0d;
