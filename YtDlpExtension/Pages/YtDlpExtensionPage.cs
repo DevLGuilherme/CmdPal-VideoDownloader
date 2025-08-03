@@ -100,9 +100,12 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
             var trimmedSearch = newSearch.Trim();
 
-            if (string.IsNullOrWhiteSpace(trimmedSearch))
+            if (string.IsNullOrEmpty(trimmedSearch))
             {
-                await ApplyLocalFormatFilterAsync(null);
+                //await ApplyLocalFormatFilterAsync(trimmedSearch);
+                _itens.Clear();
+                _itens.AddRange(_fallbackItems);
+                RaiseItemsChanged(_itens.Count);
                 return;
             }
 
@@ -134,14 +137,9 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         try
         {
             var sourceItems = new List<VideoFormatListItem>(_fallbackItems);
-            _itens.Clear();
 
-            if (string.IsNullOrWhiteSpace(formatsSearch))
-            {
-                _itens.AddRange(sourceItems);
-                RaiseItemsChanged(_itens.Count);
-                return;
-            }
+
+            if (string.IsNullOrEmpty(formatsSearch)) return;
 
             var formatParts = formatsSearch.Split("+", StringSplitOptions.TrimEntries).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
             if (formatParts.Length == 0 || formatParts.Length > 2)
@@ -169,7 +167,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 if (!string.IsNullOrWhiteSpace(lastFormat))
                 {
                     audioFormats = audioFormats
-                        .Where(item => item.Tags.Any(tag => tag.Text.StartsWith(lastFormat, StringComparison.OrdinalIgnoreCase)))
+                        .Where(item => item.Tags.Any(tag => tag.Text.Contains(lastFormat, StringComparison.InvariantCulture)))
                         .ToList();
 
                     var exactMatch = audioFormats
@@ -180,10 +178,6 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                     {
                         audioFormats = exactMatch;
                     }
-                }
-                else
-                {
-                    audioFormats.Clear();
                 }
             }
 
@@ -271,7 +265,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     {
         _itens.Clear();
         _selectedItems.Clear();
-        _fallbackItems.Clear();
+        //_fallbackItems.Clear();
         IsLoading = true;
         if (!TryParseUrl(queryText, out var queryURL, out var audioOnlyQuery))
         {
