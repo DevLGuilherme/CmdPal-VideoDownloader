@@ -19,6 +19,10 @@
 # 🚀 Effortless Video Downloads with PowerToys!
 Download and trim videos, audios, playlists, captions and subtitles directly from the PowerToys Command Palette using yt-dlp.
 
+<div align="center">     
+<img src="Images/demo.gif" style="width: 900px;" alt="demo"/>
+</div>
+
 # ✨ Key Features
 - Download videos from hundreds of websites ([supported websites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)).
 - Simplified management: Choose output directories, set formats, and monitor progress directly from the interface.
@@ -63,13 +67,23 @@ winget install "yt-dlp.yt-dlp"
 # 🕹️ Modes
 
 ## 🍃 Simple
+
+It will only show available resolutions, making it easier to download without worrying about the technical details of the video.
 > [!TIP]
 > Download videos without worrying with codecs. (**This mode will always prefer compatibility over quality**)
 
-It will only show available resolutions, making it easier to download without worrying about the technical details of the video.
+<div align="center">     
+<img src="Images/simple_demo.png" style="width: 900px;" alt="trim video"/>
+</div>
+
 
 ## 🛠️ Advanced
 This mode has all the features enabled such as QuickMerge and the full list of available formats and metadata of each format.
+
+<div align="center">     
+<img src="Images/advanced_demo.gif" style="width: 900px;" alt="trim video"/>
+</div>
+
 
 # 👉 How to use
 
@@ -83,15 +97,37 @@ This mode has all the features enabled such as QuickMerge and the full list of a
      - Check if you want just the audio.
      - Or set a custom format selector by clicking `Advanced Options`
 5. Click `Download` to start
+
+### Parallel Downloads
+<div align="center">     
+<img src="Images/parallel_demo.gif" style="width: 900px;" alt="trim video"/>
+</div>
+
+- Each download runs independently.
+- You can download different formats, videos, audios — and monitor each download's progress in real time.
+
+> [!WARNING]
+> The only limitation applies to video trimming and livestreams, since `FFmpeg` cannot handle multiple simultaneous `m3u8 streams`.
     
 ### QuickMerge
 - Once the list of available formats appears, you can select the formats you want to merge using the format ID present in each item in the list, typed in the URL input. For example `299+140-drc`. 
 - Alternatively, you can select a video and an audio using the `Select Command` in the `Context menu` button (3 dots).
+
+<div align="center">     
+<img src="Images/QuickMerge_demo.gif" style="width: 900px;" alt="trim video"/>
+</div>
+
 > [!NOTE]
 > This feature will only work if you select exactly one video format and one audio format
 
 ### Video Trimming
-- Select any video format from the list, click the 3 dots on the bottom right and select `Trim Video`.\
+
+<div align="center">     
+<img src="Images/trim_demo.gif" style="width: 900px;" alt="trim video"/>
+</div>
+
+
+- Select any video format from the list, click the 3 dots on the bottom right and select `Trim Video`.
 - Set the start and end times (hh:mm:ss) and click `download`.\
 **This yt-dlp feature will basically watch the video and most of the time it will take the same amount of time to complete the download.**
 > [!TIP]
