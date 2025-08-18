@@ -365,5 +365,6 @@ FodyWeavers.xsd
 
 #PROJECT SPECIFIC IGNORED FILES
 YtDlpExtension/Pages/DownloadPage.cs
+YtDlpExtension/Pages/ExamplePage.cs
 YtDlpExtension/Pages/SampleContentPage.cs
 YtDlpExtension/Pages/SettingsPage.cs

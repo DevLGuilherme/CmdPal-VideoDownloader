@@ -12,7 +12,7 @@
   <Identity
     Name="DevLG.VideoDownloaderforCommandPalette"
     Publisher="CN=AEDE30DD-B1FB-4619-9024-57CF5C71AC64"
-    Version="0.0.7.0" />
+    Version="0.0.8.0" />
   <!-- When you're ready to publish your extension, you'll need to change the
        Publisher= to match your own identity -->
 
@@ -54,7 +54,7 @@
         </com:Extension>
         <uap3:Extension Category="windows.appExtension">
           <uap3:AppExtension Name="com.microsoft.commandpalette"
-            Id="ID"
+            Id="CmdPal-Video-Downloader"
             PublicFolder="Public"
             DisplayName="DevLG.VideoDownloaderforCommandPalette"
             Description="Yt-Dlp extension for Microsoft PowerToys Command Palette">

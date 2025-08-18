@@ -325,11 +325,11 @@ namespace YtDlpExtension.Helpers
                 {
                     bestformat = line;
                 }
-                if (line.Contains("This video is age-restricted"))
+                if (line.Contains("age-restricted"))
                 {
                     errorCode = 403;
                 }
-                if (line.Contains("This video is only available for registered users"))
+                if (line.Contains("registered users") || line.Contains("Sign in") || line.Contains("authentication"))
                 {
                     errorCode = 401;
                 }
@@ -358,10 +358,6 @@ namespace YtDlpExtension.Helpers
             await process.WaitForExitAsync();
 
             var output = outputBuilder.ToString();
-
-            SetTitle(!string.IsNullOrEmpty(output)
-                ? $"Best format {bestformat}"
-                : "yt-dlp-extension");
 
             NotifyItemsChanged();
             SetLoading(false);

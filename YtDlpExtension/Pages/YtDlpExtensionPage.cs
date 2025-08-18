@@ -28,8 +28,6 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private DownloadHelper _ytDlp;
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
     private readonly SettingsManager _settingsManager;
-    //private string _currentUrl;
-    //private CancellationTokenSource? _debounceCts;
     private string _lastSearch = string.Empty;
 
     public List<VideoFormatListItem> GetActiveDownloads()
@@ -265,7 +263,6 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     {
         _itens.Clear();
         _selectedItems.Clear();
-        //_fallbackItems.Clear();
         IsLoading = true;
         if (!TryParseUrl(queryText, out var queryURL, out var audioOnlyQuery))
         {
@@ -279,7 +276,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         if (error > 0)
         {
             var (title, message, icon) = GetError(error);
-            HandleError(title, message.ToLocalized(), icon);
+            HandleError(title, message, icon);
             return;
         }
 
