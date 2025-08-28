@@ -536,13 +536,18 @@ namespace YtDlpExtension.Helpers
                 arguments.Add($"--download-sections \"*{startTime}-{endTime}\"");
             }
 
+            if (_settings.GetEmbedThumbnail)
+            {
+                arguments.Add("--embed-thumbnail");
+            }
+
             arguments.Add($"\"{url}\"");
 
             var argumentsFinal = string.Join(" ", arguments);
             //var debugBanner = new StatusMessage();
             //debugBanner.UpdateState(DownloadState.CustomMessage, argumentsFinal, true);
             //debugBanner.ShowStatus();
-            var shouldRedirect = isLive ? false : true;
+            var shouldRedirect = !isLive;
             var psi = new ProcessStartInfo
             {
                 FileName = "yt-dlp",

@@ -190,6 +190,9 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   <data name="DownloadingSubtitle" xml:space="preserve">
     <value>Baixando legenda: {0}</value>
   </data>
+  <data name="EmbedThumbnail" xml:space="preserve">
+    <value>Incorporar thumbnail</value>
+  </data>
   <data name="EmptyContentTiltle" xml:space="preserve">
     <value>Cole uma URL para começar.</value>
   </data>

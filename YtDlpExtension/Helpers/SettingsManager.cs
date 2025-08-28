@@ -85,6 +85,10 @@ namespace YtDlpExtension.Helpers
             Description = "Always recode video (Increases time but ensures compatibility)"
         };
 
+        private readonly ToggleSetting _embedThumbnail = new("embedThumbnail", true)
+        {
+            Label = "EmbedThumbnail".ToLocalized(),
+        };
 
         private readonly ChoiceSetSetting _mode = new("mode", [
                 new ChoiceSetSetting.Choice("Simple", ExtensionMode.SIMPLE),
@@ -159,6 +163,7 @@ namespace YtDlpExtension.Helpers
         public string GetCookiesFile => _cookiesFileLocation.Value ?? string.Empty;
         public string GetSelectedMode => _mode.Value ?? ExtensionMode.SIMPLE;
         public bool GetDownloadOnPaste => _downloadOnPaste.Value;
+        public bool GetEmbedThumbnail => _embedThumbnail.Value;
         public string GetCustomFormatSelector => _customFormatSelector.Value ?? string.Empty;
         internal static string SettingsJsonPath()
         {
@@ -177,6 +182,8 @@ namespace YtDlpExtension.Helpers
             Settings.Add(_cookiesFileLocation);
             Settings.Add(_customFormatSelector);
             Settings.Add(_downloadOnPaste);
+            Settings.Add(_embedThumbnail);
+
             try
             {
                 LoadSettings();
