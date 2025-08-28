@@ -190,6 +190,9 @@ Provide the cookies file in the Settings page to proceed.</value>
   <data name="DownloadingSubtitle" xml:space="preserve">
     <value>Downloading subtitle: {0}</value>
   </data>
+  <data name="EmbedThumbnail" xml:space="preserve">
+    <value>Embed thumbnail</value>
+  </data>
   <data name="EmptyContentTiltle" xml:space="preserve">
     <value>Paste an URL to start.</value>
   </data>
