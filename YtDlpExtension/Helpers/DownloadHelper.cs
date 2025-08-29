@@ -10,7 +10,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using YtDlpExtension.Pages;
-
+using Command = Microsoft.CommandPalette.Extensions.Toolkit.Command;
+using CommandResult = Microsoft.CommandPalette.Extensions.Toolkit.CommandResult;
+using MedallionCommand = Medallion.Shell.Command;
 namespace YtDlpExtension.Helpers
 {
     public sealed partial class DownloadHelper
@@ -373,6 +375,198 @@ namespace YtDlpExtension.Helpers
 
         }
 
+        private async Task<Command?> ExecuteMedallionDownloadProcessAsync(
+            List<string> arguments,
+            StatusMessage downloadBanner,
+            bool isLive,
+            Action<string>? onOutputData = null,
+            Action<string>? onErrorData = null,
+            Action? onStart = null,
+            Action<Command>? onFinish = null,
+            Action? onAlreadyDownloaded = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+
+            var shellCommand = MedallionCommand.Run("yt-dlp", arguments,
+                op =>
+                {
+                    op.DisposeOnExit(false).StartInfo(psi =>
+                    {
+                        psi.RedirectStandardOutput = true;
+                        psi.RedirectStandardError = true;
+                        psi.UseShellExecute = false;
+                        psi.CreateNoWindow = true;
+                    });
+                    //op.CancellationToken(cancellationToken);
+                }
+            );
+            bool isCancelled = false;
+            bool alreadyDownloaded = false;
+
+            _ = Task.Run(async () =>
+            {
+                using var reader = shellCommand.StandardOutput;
+                string? data;
+                while ((data = await reader.ReadLineAsync()) != null && !cancellationToken.IsCancellationRequested)
+                {
+                    if (!string.IsNullOrEmpty(data))
+                    {
+                        onOutputData?.Invoke(data);
+                        Throttle((dataThrottled) =>
+                        {
+                            var ativos = RequestActiveDownloads?.Invoke() ?? new List<VideoFormatListItem>();
+                            if (ativos.Count > 1)
+                            {
+                                SetTitle($"InQueue".ToLocalized());
+                            }
+                            else
+                            {
+                                SetTitle(dataThrottled);
+                            }
+                            if (dataThrottled.Contains("has already been downloaded"))
+                            {
+                                alreadyDownloaded = true;
+                                var fullLogMessage = dataThrottled.Split("has")[0];
+                                var videoTitle = fullLogMessage.Split("[download]")[1].Trim();
+                                SetTitle($"⚠️ {"AlreadyDownloaded".ToLocalized()}");
+                                downloadBanner.UpdateState(DownloadState.AlreadyDownloaded, videoTitle);
+                                onAlreadyDownloaded?.Invoke();
+                            }
+                        }, data, 200);
+                    }
+                }
+            }, cancellationToken);
+
+            _ = Task.Run(async () =>
+            {
+                using var reader = shellCommand.StandardError;
+                string? data;
+                while ((data = await reader.ReadLineAsync()) != null && !cancellationToken.IsCancellationRequested)
+                {
+                    if (!string.IsNullOrEmpty(data)) onErrorData?.Invoke(data);
+                }
+            }, cancellationToken);
+
+            try
+            {
+                onStart?.Invoke();
+
+                if (!isLive)
+                {
+                    downloadBanner.UpdateState(DownloadState.Extracting);
+                }
+
+                downloadBanner.ShowStatus();
+
+                using (cancellationToken.Register(async
+                () =>
+                {
+                    try
+                    {
+                        if (!shellCommand.Process.HasExited)
+                        {
+                            //isCancelled = true;
+                            var exited = false;
+                            var signaled = await shellCommand.TrySignalAsync(Medallion.Shell.CommandSignal.ControlC);
+
+                            if (signaled)
+                            {
+                                // Espera o processo encerrar naturalmente, sem limite de tempo
+                                await shellCommand.Task;
+                            }
+                            else
+                            {
+                                // Se não conseguiu enviar sinal (raro), mata forçado
+                                shellCommand.Process.Kill(entireProcessTree: true);
+                            }
+                            exited = true;
+                        }
+                    }
+                    catch { /* ignore */ }
+                }))
+                {
+                    await shellCommand.Task;
+                }
+
+
+                var exitCode = shellCommand.Result.ExitCode;
+
+                if (!isCancelled && exitCode == 0 && !alreadyDownloaded)
+                {
+                    SetTitle($"✅ {"Downloaded".ToLocalized()}");
+                    downloadBanner.UpdateState(DownloadState.Finished);
+
+                    var filePath = ExtractDownloadPath(shellCommand.Process.StartInfo.Arguments); // ajuste aqui
+                    var showInExplorerCommand = new AnonymousCommand(() =>
+                    {
+                        try
+                        {
+                            Process.Start("explorer.exe", $"\"{filePath}\"");
+                        }
+                        catch
+                        {
+                            downloadBanner.UpdateState(DownloadState.Error, "Error creating open file command");
+                        }
+                    })
+                    {
+                        Name = "ShowOutputDir".ToLocalized(),
+                        Result = CommandResult.KeepOpen()
+                    };
+
+                    onFinish?.Invoke(showInExplorerCommand);
+                }
+                else if (isCancelled)
+                {
+                    SetTitle($"⛔ {"Cancelled".ToLocalized()}");
+                    downloadBanner.UpdateState(DownloadState.Cancelled);
+                }
+
+
+                if (exitCode == 1)
+                {
+                    SetTitle($"Downloaded".ToLocalized());
+                    downloadBanner.UpdateState(DownloadState.Finished);
+                }
+
+
+                if (exitCode > 0 && (exitCode != 1 || exitCode != 2))
+                {
+                    SetTitle("Error".ToLocalized());
+                    downloadBanner.UpdateState(DownloadState.Error, "EmptyDataYtDlp".ToLocalized());
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                SetTitle($"⛔ {"Cancelled".ToLocalized()}");
+                downloadBanner.UpdateState(DownloadState.Cancelled);
+                return null;
+            }
+
+            var filePathFinal = ExtractDownloadPath(shellCommand.Process.StartInfo.Arguments);
+            if (filePathFinal is not null)
+            {
+                return new AnonymousCommand(() =>
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(filePathFinal) { UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error opening file: {ex.Message}");
+                    }
+                })
+                {
+                    Name = $"Open in folder",
+                    Icon = new IconInfo("\uE838")
+                };
+            }
+
+            return null;
+
+        }
+
         public async Task<(string, string, int)> TryExecuteQueryAsync(string url)
         {
             var arguments = "--dump-single-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose --flat-playlist";
@@ -717,6 +911,178 @@ namespace YtDlpExtension.Helpers
             );
         }
 
+        public async Task<Command?> TryExecuteMedallionDownloadAsync(
+            string url,
+            StatusMessage downloadBanner,
+            string videoTitle = "",
+            string videoFormatId = "",
+            string startTime = "",
+            string endTime = "",
+            string audioFormatId = "bestaudio",
+            bool audioOnly = false,
+            bool isLive = false,
+            Action? onStart = null,
+            Action<Command>? onFinish = null,
+            Action? onAlreadyDownloaded = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var customFormatSelector = _settings.GetCustomFormatSelector;
+            onStart?.Invoke();
+            downloadBanner.UpdateState(DownloadState.Extracting);
+            var downloadPath = GetSettingsDownloadPath();
+
+            var arguments = new List<string>
+            {
+                "--verbose",
+                "--no-mtime",
+                "--no-playlist",
+                "-o", "%(title)s - %(format_id)s - %(resolution)s.%(ext)s",
+                "-P", $"{downloadPath}"
+            };
+
+            if (_settings.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies))
+            {
+                arguments.Add($"--cookies");
+                arguments.Add(cookies);
+            }
+
+            if (audioOnly)
+            {
+                arguments.Add("-f");
+                arguments.Add($"{audioFormatId}/bestaudio/ba/best");
+                arguments.Add("--extract-audio");
+                arguments.Add("--audio-format");
+                arguments.Add(GetSettingsAudioOutputFormat());
+            }
+            else
+            {
+                arguments.Add("-f");
+                if (!string.IsNullOrEmpty(customFormatSelector))
+                {
+                    arguments.Add($"{customFormatSelector}");
+                }
+                else if (_settings.GetSelectedMode == ExtensionMode.SIMPLE)
+                {
+                    arguments.Add($"{videoFormatId}+bestaudio[acodec!=opus]/{videoFormatId}+ba/{videoFormatId}/best");
+                }
+                else
+                {
+                    arguments.Add($"{videoFormatId}+{audioFormatId}/best");
+                }
+                arguments.Add("--merge-output-format");
+                arguments.Add(GetSettingsVideoOutputFormat());
+            }
+
+            if (!string.IsNullOrEmpty(startTime) && !string.IsNullOrEmpty(endTime))
+            {
+                arguments.Add($"--download-sections");
+                arguments.Add($"*{startTime}-{endTime}");
+            }
+
+            if (_settings.GetEmbedThumbnail)
+            {
+                arguments.Add("--embed-thumbnail");
+            }
+
+            arguments.Add(url);
+
+            var argumentsFinal = string.Join(" ", arguments);
+            //var debugBanner = new StatusMessage();
+            //debugBanner.UpdateState(DownloadState.CustomMessage, argumentsFinal, true);
+            //debugBanner.ShowStatus();
+            var shouldRedirect = !isLive;
+            //var psi = new ProcessStartInfo
+            //{
+            //    FileName = "yt-dlp",
+            //    Arguments = argumentsFinal,
+            //    RedirectStandardOutput = shouldRedirect,
+            //    RedirectStandardError = shouldRedirect,
+            //    UseShellExecute = false,
+            //    CreateNoWindow = shouldRedirect,
+            //};
+
+            //using var downloadProcess = new Process { StartInfo = psi };
+
+            //var command = MedallionCommand.Run("yt-dlp", arguments,
+            //    op =>
+            //    {
+            //        op.DisposeOnExit(false).StartInfo(psi =>
+            //        {
+            //            psi.RedirectStandardOutput = shouldRedirect;
+            //            psi.RedirectStandardError = shouldRedirect;
+            //            psi.UseShellExecute = false;
+            //            psi.CreateNoWindow = shouldRedirect;
+            //        });
+            //        op.CancellationToken(cancellationToken);
+            //    }
+            //);
+
+            var timeRegex = new Regex(@"time=(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)", RegexOptions.Compiled);
+            return await ExecuteMedallionDownloadProcessAsync(
+                arguments,
+                downloadBanner,
+                isLive,
+                onOutputData: (data) =>
+                {
+                    //SetTitle(data);
+                    var progressMatch = Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%", RegexOptions.IgnoreCase);
+                    if (progressMatch.Success)
+                    {
+                        var progress = double.Parse(progressMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+                        Throttle(dataThrottled =>
+                        {
+
+                            downloadBanner.UpdateState(
+                                    DownloadState.Downloading,
+                                    $"{"Downloading".ToLocalized(videoTitle)}\n{dataThrottled}",
+                                    progressPercent: (uint)Math.Floor(progress));
+
+                        }, data, 200);
+
+                    }
+                },
+                onErrorData: (data) =>
+                {
+                    // This handles the ffmpeg output for trimming and live streams
+                    if (!string.IsNullOrEmpty(data))
+                    {
+                        var match = timeRegex.Match(data);
+                        if (match.Success)
+                        {
+                            var timeStr = match.Groups[1].Value;
+                            if (TimeSpan.TryParseExact(timeStr, @"hh\:mm\:ss\.ff", CultureInfo.InvariantCulture, out var currentTime) ||
+                                TimeSpan.TryParseExact(timeStr, @"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture, out currentTime) ||
+                                TimeSpan.TryParseExact(timeStr, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out currentTime))
+                            {
+                                if (TimeSpan.TryParse(endTime, out var endTs) && TimeSpan.TryParse(startTime, out var startTs))
+                                {
+                                    var totalDuration = endTs - startTs;
+                                    if (totalDuration.TotalSeconds > 0)
+                                    {
+                                        var percent = Math.Min(100, (currentTime.TotalSeconds / totalDuration.TotalSeconds) * 100);
+
+                                        Throttle((d) =>
+                                        {
+                                            downloadBanner.UpdateState(
+                                                DownloadState.Downloading,
+                                                $"{data.Trim()}\n({currentTime:hh\\:mm\\:ss} / {totalDuration:hh\\:mm\\:ss})",
+                                                progressPercent: (uint)Math.Floor(percent)
+                                            );
+                                        }, data, 200);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                onStart,
+                onFinish,
+                onAlreadyDownloaded,
+                cancellationToken
+            );
+        }
+
         public async Task<Command?> TryExecuteSubtitleDownloadAsync(
             string url,
             string subtitleKey,
@@ -792,10 +1158,17 @@ namespace YtDlpExtension.Helpers
             return match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
         }
 
+        private static string ExtractDownloadPath(string arguments)
+        {
+            var match = Regex.Match(arguments, @"-P\s+(?:""([^""]+)""|([^\s]+))");
+            if (!match.Success) return string.Empty;
+            return match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+        }
 
-#pragma warning disable CA1822 // Marcar membros como estáticos
+
+#pragma warning disable CA1822 
         public async Task<JObject> ExtractPlaylistDataAsync(string url, Action<JObject>? onFinish = null)
-#pragma warning restore CA1822 // Marcar membros como estáticos
+#pragma warning restore CA1822 
         {
             var psi = new ProcessStartInfo
             {
