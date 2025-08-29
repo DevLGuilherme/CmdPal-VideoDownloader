@@ -71,11 +71,26 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             Subtitle = _settingsManager.GetSelectedMode == ExtensionMode.ADVANCED ? $"{_settingsManager.GetSelectedMode} mode" : string.Empty,
             MoreCommands = [
                 new CommandContextItem(ShowOutputDirCommand(_settingsManager.DownloadLocation)),
-            new CommandContextItem(_settingsManager.Settings.SettingsPage){
-                Title = "Settings".ToLocalized(),
-                Subtitle = "Configure the video downloader settings",
-                Icon = new IconInfo("\uE713"),
-            },
+                new CommandContextItem(_settingsManager.Settings.SettingsPage){
+                    Title = "Settings".ToLocalized(),
+                    Subtitle = "Configure the video downloader settings",
+                    Icon = new IconInfo("\uE713"),
+                },
+                new CommandContextItem(
+                    new AnonymousCommand(
+                        async () =>
+                        {
+                            await _ytDlp.TryUpdateYtDlp(new StatusMessage());
+                        }
+                    )
+                    {
+                        Result = CommandResult.KeepOpen()
+                    }
+                ){
+                    Title = "CheckForUpdates".ToLocalized(),
+                    Icon = new IconInfo("\uE895"),
+
+                }
         ]
         };
         UpdateSearchText(string.Empty, string.Empty);

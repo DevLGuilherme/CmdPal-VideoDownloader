@@ -132,6 +132,93 @@ namespace YtDlpExtension.Helpers
             return new Command();
         }
 
+        public async Task<Command> TryUpdateYtDlp(StatusMessage downloadBanner, CancellationToken cancellationToken = default)
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "yt-dlp",
+                    Arguments = "-U",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+            bool isCancelled = false;
+            bool alreadyUpToDate = false;
+
+
+            downloadBanner.UpdateState(DownloadState.Extracting, isIndeterminate: true);
+            downloadBanner.ShowStatus();
+            process.OutputDataReceived += (sender, args) =>
+            {
+                if (args.Data != null)
+                {
+                    if (args.Data.Contains("is up to date"))
+                    {
+                        alreadyUpToDate = true;
+                    }
+                    Throttle((data) =>
+                    {
+                        downloadBanner.UpdateState(DownloadState.Downloading, args.Data, true);
+                    }, args.Data, 100);
+                }
+
+            };
+
+            try
+            {
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                using (cancellationToken.Register(() =>
+                {
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            isCancelled = true;
+                            process.Kill(true);
+                        }
+                    }
+                    catch { /* Ignored */ }
+                }))
+                {
+                    await process.WaitForExitAsync(cancellationToken);
+                }
+
+                if (!isCancelled && process.ExitCode == 0)
+                {
+                    if (!alreadyUpToDate)
+                    {
+                        SetTitle($"✔️ {"UpdatedSuccessful".ToLocalized()}");
+                        downloadBanner.UpdateState(DownloadState.Finished);
+                    }
+                    else
+                    {
+                        SetTitle($"✔️ {"AlreadyUpToDate".ToLocalized()}");
+                        downloadBanner.UpdateState(DownloadState.Finished);
+                    }
+
+                }
+                else if (isCancelled)
+                {
+                    SetTitle($"⛔ {"Cancelled".ToLocalized()}");
+                    downloadBanner.UpdateState(DownloadState.Cancelled);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                downloadBanner.UpdateState(DownloadState.Cancelled);
+                return null;
+            }
+
+            return new Command();
+        }
+
         private async Task<Command?> ExecuteDownloadProcessAsync(
             ProcessStartInfo psi,
             StatusMessage downloadBanner,

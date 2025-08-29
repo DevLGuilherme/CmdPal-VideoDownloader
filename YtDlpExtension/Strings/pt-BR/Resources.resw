@@ -133,6 +133,9 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} já foi baixado</value>
   </data>
+  <data name="AlreadyUpToDate" xml:space="preserve">
+    <value>O yt-dlp já está atualizado</value>
+  </data>
   <data name="AppMode" xml:space="preserve">
     <value>Modo da aplicação</value>
   </data>
@@ -156,6 +159,9 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   </data>
   <data name="Cancelled" xml:space="preserve">
     <value>Download cancelado</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Checar atualizações</value>
   </data>
   <data name="Confirm" xml:space="preserve">
     <value>Confirmar</value>
@@ -286,6 +292,13 @@ Avançado: Todos os formatos disponíveis.</value>
   </data>
   <data name="TrimVideo" xml:space="preserve">
     <value>Cortar vídeo</value>
+  </data>
+  <data name="UpdatedSuccessful" xml:space="preserve">
+    <value>Atualização concluida</value>
+  </data>
+  <data name="UpdateSuccessfulMessage" xml:space="preserve">
+    <value>yt-dlp foi atualizado com sucesso 
+{0}</value>
   </data>
   <data name="UserRestricted" xml:space="preserve">
     <value>Conteúdo disponível apenas para usuários</value>

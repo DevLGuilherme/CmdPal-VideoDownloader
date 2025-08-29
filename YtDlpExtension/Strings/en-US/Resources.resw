@@ -133,6 +133,9 @@ Provide the cookies file in the Settings page to proceed.</value>
   <data name="AlreadyDownloaded" xml:space="preserve">
     <value>{0} already downloaded</value>
   </data>
+  <data name="AlreadyUpToDate" xml:space="preserve">
+    <value>yt-dlp is up to date</value>
+  </data>
   <data name="AppMode" xml:space="preserve">
     <value>Application mode</value>
   </data>
@@ -156,6 +159,9 @@ Provide the cookies file in the Settings page to proceed.</value>
   </data>
   <data name="Cancelled" xml:space="preserve">
     <value>Download cancelled</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Check for updates</value>
   </data>
   <data name="Confirm" xml:space="preserve">
     <value>Confirm</value>
@@ -286,6 +292,13 @@ Advanced: All formats are available.</value>
   </data>
   <data name="TrimVideo" xml:space="preserve">
     <value>Trim video</value>
+  </data>
+  <data name="UpdatedSuccessful" xml:space="preserve">
+    <value>Updated completed</value>
+  </data>
+  <data name="UpdateSuccessfulMessage" xml:space="preserve">
+    <value>yt-dlp was successfully updated 
+{0}</value>
   </data>
   <data name="UserRestricted" xml:space="preserve">
     <value>Content available only for registered users</value>
