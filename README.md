@@ -34,6 +34,9 @@ Download and trim videos, audios, playlists, captions and subtitles directly fro
 <img src="Images/demo.gif" style="width: 900px;" alt="demo"/>
 </div>
 
+
+
+ 
 # ✨ Key Features
 - Download videos from hundreds of websites ([supported websites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)).
 - Simplified management: Choose output directories, set formats, and monitor progress directly from the interface.
@@ -46,20 +49,42 @@ Download and trim videos, audios, playlists, captions and subtitles directly fro
 - Quick merging using yt-dlp's format selector expressions
 - Partial Livestream download support
 
-# 📦 Requirements
+# 📦 Installation and Requirements
+
+<!-- items that need to be updated release to release -->
+[videoDownloaderX64]: https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases/download/v0.0.8/DevLG.VideoDownloaderforCommandPalette_0.0.8.0_x64.Msix
+[videoDownloaderARM64]: https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases/download/v0.0.8/DevLG.VideoDownloaderforCommandPalette_0.0.8.0_arm64.Msix
+
+### Requirements
 1. **PowerToys v0.90 or later**  
    Install with:
    ```powershell
    winget install "Microsoft.PowerToys"
    ```
-2. yt-dlp (any version, recommended: `Latest`)
-   
+2. **yt-dlp** (any version, recommended: `Latest`)\
+	Install with:
+	```powershell
+	winget install "yt-dlp.yt-dlp"
+	```
 > [!NOTE]
-> If yt-dlp is not installed, the extension will show an error message and offer an option to `Install yt-dlp (winget)`\
-> You can also install it manually:
+> If yt-dlp is not installed, the extension will show an error message and offer an option to `Install yt-dlp (winget)`
+
+
+### Microsoft Store
+Install from the [Microsoft Store's CmdPal Video Downloader page](https://apps.microsoft.com/detail/9NTTBMD2DHN0?referrer=appbadge&mode=direct)
+
+### Winget
+You can install the extension through windows package manager (winget) with the following command:
 ```powershell
-winget install "yt-dlp.yt-dlp"
+winget install "DevLG.CmdPalVideoDownloader"
 ```
+### GitHub with MsiX
+Go to the [releases page](https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases), click on Assets at the bottom to show the files available in the release and download the installer for your specific platform.
+
+|  Description   | Filename |
+|----------------|----------|
+| x64 | [DevLG.VideoDownloaderforCommandPalette_0.0.8.0_x64.Msix][videoDownloaderX64] |
+| ARM64 | [DevLG.VideoDownloaderforCommandPalette_0.0.8.0_arm64.Msix][videoDownloaderARM64] |
 
 # ⚙️ Settings
 - `Mode`: Two modes are available **`Simple`** and **`Advanced`** (default: `Simple`)
@@ -68,6 +93,7 @@ winget install "yt-dlp.yt-dlp"
 - `Audio Output format:` the output format of all downloaded audios (default: `mp3`)
 - `Custom format selector:` sets a custom yt-dlp [format selector expression string](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection). If a custom string is set, the audio and video output setting will be ignored. (default: `blank`)
 - `Download on Paste:` When a custom format selector is set, and this option is checked, the download will start automatically when pasting an URL. (default `unchecked`)
+- `Embed thumbnail:` Embeds thumbnail into the file's metadata. (default `checked`)
 - `cookies.txt file location:` the location of your [exported cookies](https://github.com/DevLGuilherme/CmdPal-VideoDownloader/edit/main/README.md#cookies) file. (default: `blank`)
 > [!TIP]
 > **Leave `Custom format selector` blank if you don't need a specific video or audio codec**\
