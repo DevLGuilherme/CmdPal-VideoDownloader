@@ -26,6 +26,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private List<VideoFormatListItem> _fallbackItems = new();
     private List<VideoFormatListItem> _selectedItems = new();
     private DownloadHelper _ytDlp;
+    private bool _isQueryRunning;
     IconInfo _ytDlpIcon = IconHelpers.FromRelativePath("Assets\\CmdPal-YtDlp.png");
     private readonly SettingsManager _settingsManager;
     private string _lastSearch = string.Empty;
@@ -141,7 +142,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         }
         catch
         {
-            //IGNORED
+            IsLoading = false;
         }
     }
 
@@ -276,12 +277,19 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     private async Task UpdateListAsync(string queryText)
     {
+        if (_isQueryRunning)
+        {
+            return;
+        }
+        _isQueryRunning = true;
+
         _itens.Clear();
         _selectedItems.Clear();
         IsLoading = true;
         if (!TryParseUrl(queryText, out var queryURL, out var audioOnlyQuery))
         {
             IsLoading = false;
+            _isQueryRunning = false;
             return;
         }
         var isPlaylistURL = IsPlaylistUrl(queryURL);
@@ -342,11 +350,13 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         {
             HandleError("SomethingWrong".ToLocalized(), ex.Message);
             IsLoading = false;
+            _isQueryRunning = false;
             return;
         }
 
         finally
         {
+            _isQueryRunning = false;
             IsLoading = false;
         }
 
@@ -376,6 +386,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     private void ApplyPlaylistData(VideoData data)
     {
+
         var thumbnailFallback = data?.Thumbnails!
                                     .Where(thumb => thumb.id!.Contains('7'))
                                     .Select(thumb => thumb.url)

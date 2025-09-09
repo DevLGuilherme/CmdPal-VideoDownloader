@@ -185,7 +185,7 @@ namespace YtDlpExtension.Pages
                                                         {
                                                             "type": "Input.Text",
                                                             "id": "customRangeInput",
-                                                            "label": "Custom Range",
+                                                            "label": "{{"PlaylistCustomRange".ToLocalized()}}",
                                                             "placeholder": "1,2,3,5-11"
                                                         }
                                                     ]
@@ -253,7 +253,7 @@ namespace YtDlpExtension.Pages
                                             "actions": [
                                                 {
                                                     "type": "Action.ToggleVisibility",
-                                                    "title": "Custom Range",
+                                                    "title": "{{"PlaylistCustomRange".ToLocalized()}}",
                                                     "targetElements": [
                                                         "customRangeContainer",
                                                         "playlistStartContainer",
