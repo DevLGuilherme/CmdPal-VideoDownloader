@@ -459,8 +459,9 @@ namespace YtDlpExtension.Helpers
             string videoFormat,
             string playlistStart,
             string playlistEnd,
+            string playlistItems = "",
             string customFormatSelector = "",
-            string audioFormatId = "bestaudio",
+            string audioFormatId = "bestaudio[ext=m4a]",
             bool audioOnly = false,
             Action? onStart = null,
             Action<Command>? onFinish = null,
@@ -479,10 +480,24 @@ namespace YtDlpExtension.Helpers
                 "--yes-playlist"
             };
 
-            if (!string.IsNullOrEmpty(playlistStart))
-                arguments.Add($"--playlist-start {playlistStart}");
-            if (!string.IsNullOrEmpty(playlistEnd))
-                arguments.Add($"--playlist-end {playlistEnd}");
+            if (playlistItems != string.Empty)
+            {
+                arguments.Add($"--playlist-items {playlistItems}");
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(playlistStart))
+                {
+                    arguments.Add($"--playlist-start {playlistStart}");
+                }
+
+                if (!string.IsNullOrEmpty(playlistEnd))
+                {
+                    arguments.Add($"--playlist-end {playlistEnd}");
+                }
+            }
+
+
 
             if (audioOnly)
             {
