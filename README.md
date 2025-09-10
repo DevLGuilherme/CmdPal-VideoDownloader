@@ -52,8 +52,8 @@ Download and trim videos, audios, playlists, captions and subtitles directly fro
 # 📦 Installation and Requirements
 
 <!-- items that need to be updated release to release -->
-[videoDownloaderX64]: https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases/download/v0.0.8/DevLG.VideoDownloaderforCommandPalette_0.0.8.0_x64.Msix
-[videoDownloaderARM64]: https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases/download/v0.0.8/DevLG.VideoDownloaderforCommandPalette_0.0.8.0_arm64.Msix
+[videoDownloaderX64]: https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases/download/v0.0.9/DevLG.VideoDownloaderforCommandPalette_0.0.9.0_x64.Msix
+[videoDownloaderARM64]: https://github.com/DevLGuilherme/CmdPal-VideoDownloader/releases/download/v0.0.9/DevLG.VideoDownloaderforCommandPalette_0.0.9.0_arm64.Msix
 
 ### Requirements
 1. **PowerToys v0.90 or later**  
@@ -69,6 +69,7 @@ Download and trim videos, audios, playlists, captions and subtitles directly fro
 > [!NOTE]
 > If yt-dlp is not installed, the extension will show an error message and offer an option to `Install yt-dlp (winget)`
 
+## Installation Methods
 
 ### Microsoft Store
 Install from the [Microsoft Store's CmdPal Video Downloader page](https://apps.microsoft.com/detail/9NTTBMD2DHN0?referrer=appbadge&mode=direct)
@@ -83,8 +84,8 @@ Go to the [releases page](https://github.com/DevLGuilherme/CmdPal-VideoDownloade
 
 |  Description   | Filename |
 |----------------|----------|
-| x64 | [DevLG.VideoDownloaderforCommandPalette_0.0.8.0_x64.Msix][videoDownloaderX64] |
-| ARM64 | [DevLG.VideoDownloaderforCommandPalette_0.0.8.0_arm64.Msix][videoDownloaderARM64] |
+| x64 | [DevLG.VideoDownloaderforCommandPalette_0.0.9.0_x64.Msix][videoDownloaderX64] |
+| ARM64 | [DevLG.VideoDownloaderforCommandPalette_0.0.9.0_arm64.Msix][videoDownloaderARM64] |
 
 # ⚙️ Settings
 - `Mode`: Two modes are available **`Simple`** and **`Advanced`** (default: `Simple`)
