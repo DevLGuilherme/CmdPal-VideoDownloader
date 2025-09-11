@@ -4,8 +4,8 @@
     <RootNamespace>YtDlpExtension</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
-    <WindowsSdkPackageVersion>10.0.22621.57</WindowsSdkPackageVersion>
-    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
+    <TargetFramework>net9.0-windows10.0.26100.38</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
@@ -135,8 +135,27 @@
     <AppxBundlePlatforms>x64|arm64</AppxBundlePlatforms>
   </PropertyGroup>
   <ItemGroup>
+    <PRIResource Remove="Strings\pt-BR\Resources.resw" />
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Remove="Strings\en-US\Resources.resw" />
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Remove="Strings\pt-BR\Resources.resw" />
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Remove="Strings\en-US\Resources.resw" />
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Update="Strings\en-US\Resources.resw">
+      <Generator>InternalReswFileCodeGenerator</Generator>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </PRIResource>
+  </ItemGroup>
+  <ItemGroup>
     <PRIResource Update="Strings\pt-BR\Resources.resw">
-      <Generator>ResXFileCodeGenerator</Generator>
+      <Generator>InternalReswFileCodeGenerator</Generator>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </PRIResource>
   </ItemGroup>
 </Project>
