@@ -44,6 +44,12 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         Title = "Video Downloader";
         Name = "Open";
         ShowDetails = true;
+        if (_settingsManager.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies) && !_settingsManager.GetAlwaysUseCookies)
+        {
+            var filters = new SearchFilters();
+            filters.PropChanged += Filters_PropChanged;
+            Filters = filters;
+        }
         ReloadExtensionState();
         _ytDlp.TitleUpdated += title => Title = title;
         _ytDlp.LoadingChanged += loading => IsLoading = loading;
@@ -52,10 +58,26 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
     }
 
+    private async void Filters_PropChanged(object sender, IPropChangedEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(SearchText))
+        {
+            _itens.Clear();
+
+            if (Filters?.CurrentFilterId == "with-cookies")
+            {
+                await UpdateListAsync(SearchText, true);
+            }
+            else
+            {
+                await UpdateListAsync(SearchText);
+            }
+        }
+    }
+
 
     private void ReloadExtensionState()
     {
-        //var (isAvailable, ytDlpVersion) = SettingsManager.IsYtDlpBinaryAvailable();
 
         if (!_ytDlp.IsAvailable)
         {
@@ -77,6 +99,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                     Subtitle = "Configure the video downloader settings",
                     Icon = new IconInfo("\uE713"),
                 },
+                new Separator(),
                 new CommandContextItem(
                     new AnonymousCommand(
                         async () =>
@@ -101,7 +124,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     public override async void UpdateSearchText(string oldSearch, string newSearch)
     {
         if (!_ytDlp.IsAvailable) return;
-
+        var currentFilterId = Filters?.CurrentFilterId;
         try
         {
             if (_lastSearch == newSearch)
@@ -138,11 +161,21 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 return;
             }
 
-            await UpdateListAsync(newSearch);
+            if (currentFilterId == "with-cookies")
+            {
+                await UpdateListAsync(newSearch, true);
+            }
+
+            else
+            {
+                await UpdateListAsync(newSearch, _settingsManager.GetAlwaysUseCookies);
+            }
         }
-        catch
+
+        finally
         {
             IsLoading = false;
+            _isQueryRunning = false;
         }
     }
 
@@ -275,7 +308,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         }
     }
 
-    private async Task UpdateListAsync(string queryText)
+    private async Task UpdateListAsync(string queryText, bool withCookies = false)
     {
         if (_isQueryRunning)
         {
@@ -294,7 +327,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         }
         var isPlaylistURL = IsPlaylistUrl(queryURL);
 
-        var (jsonResult, bestformat, error) = await _ytDlp.TryExecuteQueryAsync(queryURL);
+        var (jsonResult, bestformat, error) = await _ytDlp.TryExecuteQueryAsync(queryURL, withCookies);
 
         if (error > 0)
         {
@@ -720,6 +753,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             Title = title,
             Subtitle = message
         };
+        _isQueryRunning = false;
     }
 
     private void HandleMissingYtDlpError()

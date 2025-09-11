@@ -373,11 +373,11 @@ namespace YtDlpExtension.Helpers
 
         }
 
-        public async Task<(string, string, int)> TryExecuteQueryAsync(string url)
+        public async Task<(string, string, int)> TryExecuteQueryAsync(string url, bool withCookies = false)
         {
             var arguments = "--dump-single-json  --no-playlist --no-check-formats --ignore-no-formats-error --verbose --flat-playlist";
 
-            if (_settings.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies))
+            if (_settings.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies) && withCookies)
             {
                 arguments = $"{arguments} --cookies \"{cookies}\"";
             }
