@@ -263,6 +263,9 @@ Avançado: Todos os formatos disponíveis.</value>
   <data name="playlistCount" xml:space="preserve">
     <value>{0} Vídeos</value>
   </data>
+  <data name="PlaylistCustomRange" xml:space="preserve">
+    <value>Intervalo Personalizado</value>
+  </data>
   <data name="PlaylistFetchedDescription" xml:space="preserve">
     <value>Pressione Enter para selecionar o formato</value>
   </data>

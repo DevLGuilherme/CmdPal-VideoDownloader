@@ -263,6 +263,9 @@ Advanced: All formats are available.</value>
   <data name="playlistCount" xml:space="preserve">
     <value>{0} Videos</value>
   </data>
+  <data name="PlaylistCustomRange" xml:space="preserve">
+    <value>Custom Range</value>
+  </data>
   <data name="PlaylistFetchedDescription" xml:space="preserve">
     <value>Press enter to select format</value>
   </data>

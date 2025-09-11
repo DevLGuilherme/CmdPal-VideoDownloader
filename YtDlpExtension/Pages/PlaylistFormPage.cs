@@ -55,6 +55,7 @@ namespace YtDlpExtension.Pages
         private readonly Action<string> _onDownloadFinish;
         //private readonly StatusMessage _playlistDownloadBanner = new();
         private readonly StatusMessage _playlistDownloadBanner;
+
         public PlaylistFormContent(SettingsManager settings, JObject jsonData, DownloadHelper ytDlp, Action<CancellationTokenSource> onSubmit, Action<string> onDownloadFinish, StatusMessage? downloadBanner = default)
         {
             _settings = settings;
@@ -176,8 +177,25 @@ namespace YtDlpExtension.Pages
                                             "columns": [
                                                 {
                                                     "type": "Column",
+                                                    "id": "customRangeContainer",
+                                                    "verticalContentAlignment": "Bottom",
+                                                    "width": "stretch",
+                                                    "isVisible": false,
+                                                    "items": [
+                                                        {
+                                                            "type": "Input.Text",
+                                                            "id": "customRangeInput",
+                                                            "label": "{{"PlaylistCustomRange".ToLocalized()}}",
+                                                            "placeholder": "1,2,3,5-11"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "Column",
                                                     "verticalContentAlignment": "Bottom",
                                                     "width": "auto",
+                                                    "id": "playlistStartContainer",
+                                                    "isVisible": true,
                                                     "items": [
                                                         {
                                                             "type": "Input.Number",
@@ -196,6 +214,8 @@ namespace YtDlpExtension.Pages
                                                     "type": "Column",
                                                     "verticalContentAlignment": "Bottom",
                                                     "width": "auto",
+                                                    "id": "playlistEndContainer",
+                                                    "isVisible": true,
                                                     "items": [
                                                         {
                                                             "type": "Input.Number",
@@ -215,18 +235,34 @@ namespace YtDlpExtension.Pages
                                                     "width": "auto",
                                                     "items": [
                                                         {
-                                                          "type": "TextBlock",
-                                                          "text": " ",
-                                                          "spacing": "None"
+                                                            "type": "TextBlock",
+                                                            "text": " ",
+                                                            "spacing": "None"
                                                         },
                                                         {
                                                             "type": "Input.Toggle",
                                                             "title": "{{"DownloadAudioOnly".ToLocalized()}}",
                                                             "id": "audioOnly"
-                                                        }
+                                                        } 
                                                     ]
                                                 }
                                             ]
+                                        },          
+                                        {
+                                            "type": "ActionSet",
+                                            "actions": [
+                                                {
+                                                    "type": "Action.ToggleVisibility",
+                                                    "title": "{{"PlaylistCustomRange".ToLocalized()}}",
+                                                    "targetElements": [
+                                                        "customRangeContainer",
+                                                        "playlistStartContainer",
+                                                        "playlistEndContainer"
+                                                    ]
+                                                }
+                                            ],
+                                            "spacing": "Padding",
+                                            "horizontalAlignment": "Center"
                                         },
                                         {
                                             "type": "ActionSet",
@@ -247,7 +283,8 @@ namespace YtDlpExtension.Pages
                                                     ]
                                                 }
                                             ],
-                                            "spacing": "Padding",
+                                            "separator": true,
+                                            "spacing": "Medium",
                                             "horizontalAlignment": "Center"
                                         }
                                     ],
@@ -274,27 +311,27 @@ namespace YtDlpExtension.Pages
             {
                 return CommandResult.GoHome();
             }
-            ;
+
             var resolution = formInput["resolution"]?.ToString() ?? "best";
             var downloadPathFromPayload = formInput["downloadPath"]?.ToString();
-            bool audioOnly = formInput["audioOnly"]?.ToString().Contains("true") ?? false;
-            string playlistStart = formInput["playlistStart"]?.ToString() ?? "1";
-            string playlistEnd = formInput["playlistEnd"]?.ToString() ?? "1";
-            string customFormat = formInput["customFormat"]?.ToString() ?? "";
-
+            var audioOnly = formInput["audioOnly"]?.ToString().Contains("true") ?? false;
+            var playlistStart = formInput["playlistStart"]?.ToString() ?? "1";
+            var playlistEnd = formInput["playlistEnd"]?.ToString() ?? "1";
+            var customFormat = formInput["customFormat"]?.ToString() ?? "";
+            var playlistCustomRange = formInput["customRangeInput"]?.ToString() ?? "";
             var videoURL = _jsonData["videoURL"]?.ToString() ?? "";
             var downloadPath = string.IsNullOrEmpty(downloadPathFromPayload) ? Path.Combine(_settings.DownloadLocation, _playlistTitle) : downloadPathFromPayload;
             var token = new CancellationTokenSource();
-            CommandResult.Confirm(new ConfirmationArgs()
-            {
-                Description = formInput.ToString(),
-                Title = "Payload",
-                PrimaryCommand = new NoOpCommand()
-                {
+            //CommandResult.Confirm(new ConfirmationArgs()
+            //{
+            //    Description = formInput.ToString(),
+            //    Title = "Payload",
+            //    PrimaryCommand = new NoOpCommand()
+            //    {
 
-                }
+            //    }
 
-            });
+            //});
             _ = _ytDlp.TryExecutePlaylistDownloadAsync(
                 videoURL,
                 _playlistDownloadBanner,
@@ -302,6 +339,7 @@ namespace YtDlpExtension.Pages
                 resolution,
                 playlistStart,
                 playlistEnd,
+                playlistCustomRange,
                 customFormat,
                 audioOnly: audioOnly,
                 cancellationToken: token.Token,
