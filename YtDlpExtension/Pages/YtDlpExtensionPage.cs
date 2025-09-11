@@ -44,7 +44,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
         Title = "Video Downloader";
         Name = "Open";
         ShowDetails = true;
-        if (_settingsManager.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies))
+        if (_settingsManager.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies) && !_settingsManager.GetAlwaysUseCookies)
         {
             var filters = new SearchFilters();
             filters.PropChanged += Filters_PropChanged;
@@ -168,12 +168,14 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 
             else
             {
-                await UpdateListAsync(newSearch);
+                await UpdateListAsync(newSearch, _settingsManager.GetAlwaysUseCookies);
             }
         }
-        catch
+
+        finally
         {
             IsLoading = false;
+            _isQueryRunning = false;
         }
     }
 

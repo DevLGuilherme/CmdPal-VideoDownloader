@@ -136,6 +136,12 @@ Provide the cookies file in the Settings page to proceed.</value>
   <data name="AlreadyUpToDate" xml:space="preserve">
     <value>yt-dlp is up to date</value>
   </data>
+  <data name="AlwaysUseCookies" xml:space="preserve">
+    <value>Always use cookies (Keep checked if using PowerToys v0.93.0 or below)</value>
+  </data>
+  <data name="AlwaysUseCookiesDescription" xml:space="preserve">
+    <value>Always use cookies on queries (When providing the file)</value>
+  </data>
   <data name="AppMode" xml:space="preserve">
     <value>Application mode</value>
   </data>

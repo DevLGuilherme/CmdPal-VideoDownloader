@@ -136,6 +136,12 @@ Adicione o arquivo de cookies nas configurações para prosseguir.</value>
   <data name="AlreadyUpToDate" xml:space="preserve">
     <value>O yt-dlp já está atualizado</value>
   </data>
+  <data name="AlwaysUseCookies" xml:space="preserve">
+    <value>Sempre usar Cookies (Manter marcado em PowerToys v0.93.0 ou inferior)</value>
+  </data>
+  <data name="AlwaysUseCookiesDescription" xml:space="preserve">
+    <value>Sempre usar cookies nas consultas (Quando o arquivo for fornecido)</value>
+  </data>
   <data name="AppMode" xml:space="preserve">
     <value>Modo da aplicação</value>
   </data>

@@ -156,6 +156,12 @@ namespace YtDlpExtension.Helpers
             Description = "cookies.txt file location"
         };
 
+        private readonly ToggleSetting _alwaysUseCookies = new("alwaysUseCookies", true)
+        {
+            Label = "AlwaysUseCookies".ToLocalized(),
+            Description = "AlwaysUseCookiesDescription".ToLocalized(),
+        };
+
 
         public string DownloadLocation => _downloadLocation.Value ?? DownloadHelper.GetDefaultDownloadPath();
         public string GetSelectedVideoOutputFormat => _videoOutputFormats.Value ?? "mp4";
@@ -164,6 +170,7 @@ namespace YtDlpExtension.Helpers
         public string GetSelectedMode => _mode.Value ?? ExtensionMode.SIMPLE;
         public bool GetDownloadOnPaste => _downloadOnPaste.Value;
         public bool GetEmbedThumbnail => _embedThumbnail.Value;
+        public bool GetAlwaysUseCookies => _alwaysUseCookies.Value;
         public string GetCustomFormatSelector => _customFormatSelector.Value ?? string.Empty;
         internal static string SettingsJsonPath()
         {
@@ -180,6 +187,7 @@ namespace YtDlpExtension.Helpers
             Settings.Add(_videoOutputFormats);
             Settings.Add(_audioOutputFormats);
             Settings.Add(_cookiesFileLocation);
+            Settings.Add(_alwaysUseCookies);
             Settings.Add(_customFormatSelector);
             Settings.Add(_downloadOnPaste);
             Settings.Add(_embedThumbnail);
