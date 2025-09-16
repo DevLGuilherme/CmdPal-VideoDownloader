@@ -674,7 +674,6 @@ namespace YtDlpExtension.Helpers
                 isLive,
                 onOutputData: (data) =>
                 {
-                    //SetTitle(data);
                     var progressMatch = Regex.Match(data, @"\[download\]\s+(\d{1,3}(?:\.\d+)?)%", RegexOptions.IgnoreCase);
                     if (progressMatch.Success)
                     {

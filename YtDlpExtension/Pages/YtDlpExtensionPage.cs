@@ -24,6 +24,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
 {
     private List<VideoFormatListItem> _itens = new();
     private List<VideoFormatListItem> _fallbackItems = new();
+    private IContextItem[] _emptyContentCommands = [];
     private List<VideoFormatListItem> _selectedItems = new();
     private DownloadHelper _ytDlp;
     private bool _isQueryRunning;
@@ -31,25 +32,42 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private readonly SettingsManager _settingsManager;
     private string _lastSearch = string.Empty;
 
-    public List<VideoFormatListItem> GetActiveDownloads()
-    {
-        return _itens.Where(item => item.GetDownloadState == DownloadState.Downloading).ToList();
-    }
+    public List<VideoFormatListItem> GetActiveDownloads() => _itens.Where(item => item.GetDownloadState == DownloadState.Downloading).ToList();
 
     public YtDlpExtensionPage(SettingsManager settingsManager, DownloadHelper ytDlp)
     {
+        settingsManager.ExtensionHomePage = this;
         _settingsManager = settingsManager;
         _ytDlp = ytDlp;
         Icon = _ytDlpIcon;
         Title = "Video Downloader";
         Name = "Open";
         ShowDetails = true;
-        if (_settingsManager.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies) && !_settingsManager.GetAlwaysUseCookies)
-        {
-            var filters = new SearchFilters();
-            filters.PropChanged += Filters_PropChanged;
-            Filters = filters;
-        }
+        _emptyContentCommands = [
+                new Separator(),
+                new CommandContextItem(ShowOutputDirCommand(_settingsManager.DownloadLocation)),
+                new CommandContextItem(_settingsManager.Settings.SettingsPage){
+                    Title = "Settings".ToLocalized(),
+                    Subtitle = "Configure the video downloader settings",
+                    Icon = new IconInfo("\uE713"),
+                },
+
+                new CommandContextItem(
+                    new AnonymousCommand(
+                        async () =>
+                        {
+                            await _ytDlp.TryUpdateYtDlp(new StatusMessage());
+                        }
+                    )
+                    {
+                        Result = CommandResult.KeepOpen()
+                    }
+                ){
+                    Title = "CheckForUpdates".ToLocalized(),
+                    Icon = new IconInfo("\uE895"),
+
+                }
+        ];
         ReloadExtensionState();
         _ytDlp.TitleUpdated += title => Title = title;
         _ytDlp.LoadingChanged += loading => IsLoading = loading;
@@ -76,7 +94,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     }
 
 
-    private void ReloadExtensionState()
+    public void ReloadExtensionState()
     {
 
         if (!_ytDlp.IsAvailable)
@@ -85,6 +103,19 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             HandleMissingYtDlpError();
             return;
         }
+
+        if (_settingsManager.GetCookiesFile is var cookies && !string.IsNullOrEmpty(cookies) && !_settingsManager.GetAlwaysUseCookies)
+        {
+            var filters = new SearchFilters();
+            filters.PropChanged += Filters_PropChanged;
+            Filters = filters;
+        }
+
+        else
+        {
+            Filters = null;
+        }
+
         PlaceholderText = "PlaceholderText".ToLocalized();
         Title = $"Video Downloader (yt-dlp version: {_ytDlp.Version})";
         EmptyContent = new CommandItem(new NoOpCommand())
@@ -92,39 +123,20 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
             Icon = _ytDlpIcon,
             Title = "EmptyContentTiltle".ToLocalized(),
             Subtitle = _settingsManager.GetSelectedMode == ExtensionMode.ADVANCED ? $"{_settingsManager.GetSelectedMode} mode" : string.Empty,
-            MoreCommands = [
-                new CommandContextItem(ShowOutputDirCommand(_settingsManager.DownloadLocation)),
-                new CommandContextItem(_settingsManager.Settings.SettingsPage){
-                    Title = "Settings".ToLocalized(),
-                    Subtitle = "Configure the video downloader settings",
-                    Icon = new IconInfo("\uE713"),
-                },
-                new Separator(),
-                new CommandContextItem(
-                    new AnonymousCommand(
-                        async () =>
-                        {
-                            await _ytDlp.TryUpdateYtDlp(new StatusMessage());
-                        }
-                    )
-                    {
-                        Result = CommandResult.KeepOpen()
-                    }
-                ){
-                    Title = "CheckForUpdates".ToLocalized(),
-                    Icon = new IconInfo("\uE895"),
-
-                }
-        ]
+            Command = new AnonymousCommand(async () => await _ytDlp.TryUpdateYtDlp(new StatusMessage()))
+            {
+                Name = "CheckForUpdates".ToLocalized(),
+                Result = CommandResult.KeepOpen(),
+                Icon = new IconInfo("\uE895")
+            },
+            MoreCommands = _emptyContentCommands
         };
-        UpdateSearchText(string.Empty, string.Empty);
         RaiseItemsChanged(_itens.Count);
     }
 
     public override async void UpdateSearchText(string oldSearch, string newSearch)
     {
         if (!_ytDlp.IsAvailable) return;
-        var currentFilterId = Filters?.CurrentFilterId;
         try
         {
             if (_lastSearch == newSearch)
@@ -161,7 +173,7 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
                 return;
             }
 
-            if (currentFilterId == "with-cookies")
+            if (Filters?.CurrentFilterId == "with-cookies")
             {
                 await UpdateListAsync(newSearch, true);
             }
@@ -747,13 +759,15 @@ internal sealed partial class YtDlpExtensionPage : DynamicListPage
     private void HandleError(string title, string message, IconInfo? icon = null)
     {
         IsLoading = false;
+        _isQueryRunning = false;
         EmptyContent = new CommandItem(new NoOpCommand())
         {
             Icon = icon ?? new IconInfo("\uE946"),
             Title = title,
-            Subtitle = message
+            Subtitle = message,
+            MoreCommands = _emptyContentCommands
         };
-        _isQueryRunning = false;
+
     }
 
     private void HandleMissingYtDlpError()

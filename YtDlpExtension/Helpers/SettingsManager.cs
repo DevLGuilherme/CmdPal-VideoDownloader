@@ -73,6 +73,8 @@ namespace YtDlpExtension.Helpers
             }
         }
 
+        internal YtDlpExtensionPage ExtensionHomePage { get; set; }
+
         private readonly TextSetting _downloadLocation = new("downloadLocation", DownloadHelper.GetDefaultDownloadPath())
         {
             Label = "DownloadDirectory".ToLocalized(),
@@ -200,7 +202,12 @@ namespace YtDlpExtension.Helpers
             {
                 SaveSettings();
             }
-            Settings.SettingsChanged += (s, a) => this.SaveSettings();
+            Settings.SettingsChanged += (s, a) =>
+            {
+                this.SaveSettings();
+                CommandResult.GoBack();
+                ExtensionHomePage?.ReloadExtensionState();
+            };
         }
     }
 }

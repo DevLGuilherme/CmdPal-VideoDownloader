@@ -38,7 +38,7 @@ public partial class YtDlpExtensionCommandsProvider : CommandProvider
                     new CommandContextItem(settingsPage)
                     {
                         Title = "Settings".ToLocalized(),
-                        Subtitle = "Configure the video downloader settings"
+                        Subtitle = "Configure the video downloader settings",
                     },
                 ],
             },
