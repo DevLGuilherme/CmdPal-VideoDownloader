@@ -1,19 +1,19 @@
 <div align="center">
      <img src="YtDlpExtension/Assets/StoreLogo.scale-100.png" alt="Logo"/>
-     <div><h1>  Video Downloader<br><p>For PowerToys</p></h1><br></div>
+     <div><h1>  Video Downloader<br><p>For PowerToys</p></h1></div>
      <a href="https://apps.microsoft.com/detail/9NTTBMD2DHN0?referrer=appbadge&mode=direct">
-	<img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"/>
+		 <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"/>
      </a>
-     <br/>
-     <b >A Command Palette extension for downloading videos and playlists using yt-dlp</b>     
-     
-     
+	 <br/>
+     <b>A Command Palette extension for downloading videos and playlists using yt-dlp</b>     
+     <br/><br/>
+	 <img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/DevLGuilherme/CmdPal-VideoDownloader/total">
+     <img alt="GitHub Downloads (all assets, latest release)" src="https://img.shields.io/github/downloads/DevLGuilherme/CmdPal-VideoDownloader/latest/total">
 </div>
 
 
 
 <div align="center">     
-<br/>
 <img src="Images/SneakPeek.png" style="width: 900px;" alt="SneakPeek"/>
 </div>
 
